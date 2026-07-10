@@ -1,0 +1,456 @@
+{
+  "project": "AdegaFlow AI",
+  "baseline": "Sprint 2 Bootstrap and Qwen Spike Code",
+  "status": "bootstrap_verified_live_qwen_pending",
+  "generated_on": "2026-07-10",
+  "tests": {
+    "passed": 10,
+    "coverage_percent": 87,
+    "ruff": "passed",
+    "mypy": "passed"
+  },
+  "live_qwen_spike": "pending_api_key",
+  "docker_build": "not_run_docker_unavailable",
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "a471e7ac5f897687ab4e8dcb46e74fc5715ea36344702c8703492d79bb7e7863",
+      "size_bytes": 324
+    },
+    {
+      "path": ".github/workflows/api-ci.yml",
+      "sha256": "9c9a7ea38a8fcf54b15cea8224bf70e8bf9208690d7a0b40ce9c4b4d6b21f19c",
+      "size_bytes": 782
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "4b97a0119daa7085a86204ecfe8059b712e1630ea9b2ad9bfafcf32ec3f3233c",
+      "size_bytes": 328
+    },
+    {
+      "path": "AdegaFlow_AI_Baseline_Sprint2_Bootstrap.md",
+      "sha256": "d28af240c603a753de3accc781449c7f994abbad97f7169d765e18190d2535e4",
+      "size_bytes": 120744
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "29a49b659cfa10cc4ad7592e4d7737bac0b4894827cece1187c76e66e75935ab",
+      "size_bytes": 578
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "49c18f75016f089b9b3aeeb7eed2b9cb78ad52300c4f2176bb2824d6854cf022",
+      "size_bytes": 1082
+    },
+    {
+      "path": "Makefile",
+      "sha256": "ec153188316a470e84e8c392a964c4fa5d2aae3336a67fcee58da79922ef3817",
+      "size_bytes": 580
+    },
+    {
+      "path": "README.md",
+      "sha256": "bce24a6bee0d410e969aa69ebe35e485acf49ab334a603316231f59daab61d94",
+      "size_bytes": 1828
+    },
+    {
+      "path": "VERIFICATION.md",
+      "sha256": "6005ebdf39599b255a168574ecd66f52e72efd752d6b0bc20703b8144c6742b9",
+      "size_bytes": 470
+    },
+    {
+      "path": "apps/api/.dockerignore",
+      "sha256": "eea6b74ef1d221df6bb8aeb353f3a069a8e28d600642eecf5e1fd32931fc09da",
+      "size_bytes": 83
+    },
+    {
+      "path": "apps/api/Dockerfile",
+      "sha256": "6c0b7631c100d1f6a8ab6f10de5665b050212f7782a1057152520d3385824e1d",
+      "size_bytes": 634
+    },
+    {
+      "path": "apps/api/README.md",
+      "sha256": "04bf0e23d582e888e8620f57f75ebc4473c47cc8432e71c228837e3cc0945600",
+      "size_bytes": 824
+    },
+    {
+      "path": "apps/api/app/__init__.py",
+      "sha256": "a44d3e93385476259dd5b0e4281474e7b91edc38ca729dbc30ac58e15a938849",
+      "size_bytes": 36
+    },
+    {
+      "path": "apps/api/app/ai/__init__.py",
+      "sha256": "102db56a6348691fbee229bd83e73748d6168f3cda7e9c186f4d578032ae53df",
+      "size_bytes": 39
+    },
+    {
+      "path": "apps/api/app/ai/qwen_client.py",
+      "sha256": "51b936a825e7bc835f6a07c27e922e7034bda877e9f020dd65d28a524939a27f",
+      "size_bytes": 9174
+    },
+    {
+      "path": "apps/api/app/ai/schemas.py",
+      "sha256": "0bc0b8a1a04472efed4022a99cceff8777e4660835ed1b7694e0fe72e781b411",
+      "size_bytes": 1832
+    },
+    {
+      "path": "apps/api/app/api/__init__.py",
+      "sha256": "c5e79b75137811726e30acef2fa5cfc649514fce1c86da771535b368f43238c0",
+      "size_bytes": 24
+    },
+    {
+      "path": "apps/api/app/api/v1/__init__.py",
+      "sha256": "63afe214a3d0a4522132d965313c8493fdc398c9c6238be0ed9590b7f72c25f1",
+      "size_bytes": 29
+    },
+    {
+      "path": "apps/api/app/api/v1/health.py",
+      "sha256": "e78ded24d9b4071600456d27ba39301e6add5a1004b52dff7e65a408737d9465",
+      "size_bytes": 717
+    },
+    {
+      "path": "apps/api/app/api/v1/router.py",
+      "sha256": "8b483ac7c57a5d16a0c4510db50d5639f33009160f7e82d080f34981cea9d312",
+      "size_bytes": 181
+    },
+    {
+      "path": "apps/api/app/core/__init__.py",
+      "sha256": "51e226ca120b4b018ac5fc6955961edf789ba9deff501585c901b228862ba652",
+      "size_bytes": 45
+    },
+    {
+      "path": "apps/api/app/core/config.py",
+      "sha256": "52e51666120a7eb85d1f94a5bda4ad3448db84d3f29a72df892a9d3480f286bb",
+      "size_bytes": 1794
+    },
+    {
+      "path": "apps/api/app/core/logging.py",
+      "sha256": "728cb34602e60124dc4c74e3f89c8b98af1c58fd5ba267329cbce93bfafa50ef",
+      "size_bytes": 1659
+    },
+    {
+      "path": "apps/api/app/main.py",
+      "sha256": "ee7eb6c6e6512021149695499370ec14426db6c06a973d95070b69ddf0b9c52e",
+      "size_bytes": 1150
+    },
+    {
+      "path": "apps/api/pyproject.toml",
+      "sha256": "f711959d8916ea0aee3b263610cf1e234c980bf07957278c2c55252b93446128",
+      "size_bytes": 1453
+    },
+    {
+      "path": "apps/api/tests/__init__.py",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1
+    },
+    {
+      "path": "apps/api/tests/test_config.py",
+      "sha256": "905e59d6babc9e9a15f75c4f168a05d1932f3da7dec5de13cfddf40177a7ab97",
+      "size_bytes": 511
+    },
+    {
+      "path": "apps/api/tests/test_health.py",
+      "sha256": "71dae9b303fcafb7237935446de9afeecd2351ecd7321b5da6adad3882ba5edf",
+      "size_bytes": 558
+    },
+    {
+      "path": "apps/api/tests/test_logging.py",
+      "sha256": "daa356b145ccf58f0e45433504f4cc352f1e0393745a5abe90022fab298d2a6f",
+      "size_bytes": 588
+    },
+    {
+      "path": "apps/api/tests/test_qwen_client.py",
+      "sha256": "914793b81e2dc26adaeeaae3976911b81addcb725f48d3ab44d9f5c0e953ccf7",
+      "size_bytes": 4413
+    },
+    {
+      "path": "data/.gitkeep",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1
+    },
+    {
+      "path": "docker-compose.yml",
+      "sha256": "ebaaea382954e973979afdd93f1514d134b29087a419c041f36c324a196ee225",
+      "size_bytes": 648
+    },
+    {
+      "path": "docs/adr/ADR-001-general-architecture.md",
+      "sha256": "5d87a7541e74814db727baea047b9e527c4ed6b610ac4daea04e0bac0ae6af9f",
+      "size_bytes": 1229
+    },
+    {
+      "path": "docs/adr/ADR-002-frontend.md",
+      "sha256": "95d33decb7f3ca3d10e73da36bd98489eaae6b97e11b1b8f4ff8f27d15722b15",
+      "size_bytes": 1137
+    },
+    {
+      "path": "docs/adr/ADR-003-backend.md",
+      "sha256": "abecce02528f2c096eeeeceb13d11007f5c25665a42ccfc248db095ad2494a88",
+      "size_bytes": 1084
+    },
+    {
+      "path": "docs/adr/ADR-004-qwen-cloud-integration.md",
+      "sha256": "5efca87500c72b99392c9b8c23c86a5bdd4b0b8a22953aae21576ab867c74e53",
+      "size_bytes": 1196
+    },
+    {
+      "path": "docs/adr/ADR-005-tool-calling.md",
+      "sha256": "7125202f1d3748db6690aee862c257b12519c8bf2e73eead834ad1ad99e44d77",
+      "size_bytes": 1108
+    },
+    {
+      "path": "docs/adr/ADR-006-memory.md",
+      "sha256": "0df12b54df741b07d34179c930d1129cdaf9934f97e452e4a4dec2ab44f6628e",
+      "size_bytes": 1062
+    },
+    {
+      "path": "docs/adr/ADR-007-persistence.md",
+      "sha256": "bb10b5f0a4c84b7fc2ba19bb1194342c1ad8d70aed528d888e063a6793f58c91",
+      "size_bytes": 989
+    },
+    {
+      "path": "docs/adr/ADR-008-deployment.md",
+      "sha256": "ee115bb654b25a99f653603882ef15663826672bcaab9ed8e4637da74083a5de",
+      "size_bytes": 981
+    },
+    {
+      "path": "docs/adr/ADR-009-observability.md",
+      "sha256": "451317f31820397d007c4f2e9ad7955f636ae7f70f501c0297e6a42ea7c42ee5",
+      "size_bytes": 986
+    },
+    {
+      "path": "docs/adr/ADR-010-demo-product-separation.md",
+      "sha256": "32d456bfe828c0ad6f375f4c1c5ac6381300472f4bc0834f9275c533c43c32ac",
+      "size_bytes": 1047
+    },
+    {
+      "path": "docs/adr/ADR-011-qwen-model-baseline.md",
+      "sha256": "967b49801a10aaf36fd35cb0d82ff821715aacf9320f941baacd7b6db4cd0664",
+      "size_bytes": 3080
+    },
+    {
+      "path": "docs/architecture/020-sprint-1-charter.md",
+      "sha256": "910c9af87691d94335391c3c6be9f8c59ad691b35885d9c8b3e22d23f3d9d7de",
+      "size_bytes": 2483
+    },
+    {
+      "path": "docs/architecture/021-architecture-overview.md",
+      "sha256": "5478e73fd990eed5b9609b2a4ffaec0e7386efd9da1e6a50ecc857e87311652b",
+      "size_bytes": 4132
+    },
+    {
+      "path": "docs/architecture/022-repository-structure.md",
+      "sha256": "184ab0d882a7db224937c02925d57cc67ffbcc855163168ba5089c7618fa5673",
+      "size_bytes": 3348
+    },
+    {
+      "path": "docs/architecture/023-data-model.md",
+      "sha256": "dabaa366ca9f31429e7a6a90b653a04cb0d0a484e8589536022edcbf643797ed",
+      "size_bytes": 5761
+    },
+    {
+      "path": "docs/architecture/024-agent-orchestration.md",
+      "sha256": "cc18e8dd4541f174749068ea168ffab2a3a68e9da392613ade71f610b318a0f2",
+      "size_bytes": 4402
+    },
+    {
+      "path": "docs/architecture/025-tool-contracts.md",
+      "sha256": "c2ab90529fc3042401b44f014386c21972cf6bde613af2c060306b4a28e46aa5",
+      "size_bytes": 4334
+    },
+    {
+      "path": "docs/architecture/026-api-contracts.md",
+      "sha256": "7fbbe5edf1ba52ab4a29a712dc5a2bde6122a3fadd62200de86135b9a0b8eccd",
+      "size_bytes": 3429
+    },
+    {
+      "path": "docs/architecture/027-prompt-strategy.md",
+      "sha256": "fa4f7bba5f7b68ea0e53bde5debdf003abec350ea4e045a08bc6270b218f6b4c",
+      "size_bytes": 2831
+    },
+    {
+      "path": "docs/architecture/028-deployment-architecture.md",
+      "sha256": "bd2dd3a077105b992a4ccc6eb4e9410c7a9f13b930c4c5159a7ad892407bdfe1",
+      "size_bytes": 2847
+    },
+    {
+      "path": "docs/architecture/029-observability-and-errors.md",
+      "sha256": "6e4a5e7fe421c2f6dd354abbdc0991860b11f80bc3a13d8acf494340c037a43b",
+      "size_bytes": 2469
+    },
+    {
+      "path": "docs/architecture/030-sprint-1-closure.md",
+      "sha256": "dde2aa9982839ee3272d6c62a1abc4bd0b17e60a9991756d0fa4ae9494673383",
+      "size_bytes": 2335
+    },
+    {
+      "path": "docs/hackathon/040-hackathon-alignment.md",
+      "sha256": "1bcf8d600fdc4439df457d2481ea328c98c9868a4e614f495a2dda9484d3d0cc",
+      "size_bytes": 3840
+    },
+    {
+      "path": "docs/hackathon/041-delivery-plan.md",
+      "sha256": "f1011207e0106eb3c8723e0955a8f3bafc554457cf7cd489c9586c96ddc1183a",
+      "size_bytes": 2114
+    },
+    {
+      "path": "docs/implementation/050-sprint-2-charter.md",
+      "sha256": "2d2592372a7be26ae6364afea75e42a606cccb8f1a5f49e4e29bfb8ad3b8d4cc",
+      "size_bytes": 2366
+    },
+    {
+      "path": "docs/implementation/051-qwen-spike-plan.md",
+      "sha256": "adb8a89c1541fa2f023fa93af9dbc9ada39f1c2d7c0d49030050207d172692c2",
+      "size_bytes": 2984
+    },
+    {
+      "path": "docs/implementation/052-implementation-plan.md",
+      "sha256": "b7374eaa3b14e74c20964f92b64e9d7c7cb677cd6ed00615bcc896e892639a7e",
+      "size_bytes": 3548
+    },
+    {
+      "path": "docs/implementation/053-demo-data-specification.md",
+      "sha256": "a4fc1f23ce216cd4ef6333c733d15a1bc22eb35a9aef285b0df252c42ddbca3a",
+      "size_bytes": 3135
+    },
+    {
+      "path": "docs/implementation/054-test-strategy.md",
+      "sha256": "4b72bdec351599a4c950b6f08817d5ee713dec7b8da5d50077b5dace1334442a",
+      "size_bytes": 2013
+    },
+    {
+      "path": "docs/implementation/055-acceptance-scenarios.md",
+      "sha256": "291e32bc5081b000b94f0e3bfa873ce0da15f9935528104ef10dcd605e11aaae",
+      "size_bytes": 2388
+    },
+    {
+      "path": "docs/implementation/056-sprint-2-definition-of-done.md",
+      "sha256": "8ec3f8ff7c0d8eec4a8791540b78778b5b83b8be70a6b4faee1696179415f371",
+      "size_bytes": 1754
+    },
+    {
+      "path": "docs/implementation/057-sprint-2-readiness-review.md",
+      "sha256": "6d6b2088d6a9bd68cbef578f0e030d2f456fda4604acb416da28c6d821aa5ac0",
+      "size_bytes": 1110
+    },
+    {
+      "path": "docs/implementation/058-bootstrap-and-spike-implementation.md",
+      "sha256": "058f8c73949df2341387f9659675b814ad402766fdbefebc76fa5d9e4aafc69c",
+      "size_bytes": 1877
+    },
+    {
+      "path": "docs/product/000-sprint-0-charter.md",
+      "sha256": "1fe734edc694c2a18321be984d1d5d60d3578f83b4c42e6ff795596826f51160",
+      "size_bytes": 2231
+    },
+    {
+      "path": "docs/product/001-product-vision.md",
+      "sha256": "6c5a46880605e712a05dd46df0e4f8e8e675a13886c1fe235782ff1983c4932d",
+      "size_bytes": 2592
+    },
+    {
+      "path": "docs/product/002-problem.md",
+      "sha256": "2d3aa4abfadfbff28f46f781604c0bb26a32222966e5ae9387a604398121e9fb",
+      "size_bytes": 2914
+    },
+    {
+      "path": "docs/product/003-users.md",
+      "sha256": "e638f2d3806b1ae53988be040f70b7b719433160e893a6c58b667b689bf4265f",
+      "size_bytes": 2495
+    },
+    {
+      "path": "docs/product/004-value-proposition.md",
+      "sha256": "fb2e233fa09db5b877f9ebd4a1118171648b4c3cbf618389ce6cb4b58de592a8",
+      "size_bytes": 2200
+    },
+    {
+      "path": "docs/product/005-mvp-scope.md",
+      "sha256": "2874b1489d54516abc523bdfad6343315e9f044f38376580d51a84bb3b5abba6",
+      "size_bytes": 3109
+    },
+    {
+      "path": "docs/product/006-exclusions.md",
+      "sha256": "592c3010e3603c46be32c24cf4a920e86060395d367465cc3cd6b665bf913a5f",
+      "size_bytes": 1962
+    },
+    {
+      "path": "docs/product/007-primary-use-case.md",
+      "sha256": "7bcdd399049f85d1a8aede428d04d810c5f23da1344ddd8c6bd39600426a6f4e",
+      "size_bytes": 4220
+    },
+    {
+      "path": "docs/product/008-success-criteria.md",
+      "sha256": "40c68ff926a8dd08d1af1d730e93bbba9abebead0c08975e1811111cdcc3950d",
+      "size_bytes": 3151
+    },
+    {
+      "path": "docs/product/009-initial-risks.md",
+      "sha256": "2740846d90ccfc6aa622789141946bde215bff2889b8c1873ae9dd0073ca87b4",
+      "size_bytes": 3810
+    },
+    {
+      "path": "docs/product/010-preliminary-backlog.md",
+      "sha256": "74176370e167e85e307c65ab89fe01b5658934220caccc4304f89acd31cfc25e",
+      "size_bytes": 5542
+    },
+    {
+      "path": "docs/product/011-sprint-0-closure.md",
+      "sha256": "1b9f4a21efd4bbd174d5bc2e8bf5e0f552f39fec4ebf089fa789ad24b0f0bf94",
+      "size_bytes": 4103
+    },
+    {
+      "path": "infra/.gitkeep",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1
+    },
+    {
+      "path": "scripts/qwen_spike/01_basic_call.py",
+      "sha256": "2998456f0f179897ce87ecbb3cfcb5aad64c32bc0608abcbfe3b183e042ba0fc",
+      "size_bytes": 550
+    },
+    {
+      "path": "scripts/qwen_spike/02_structured_output.py",
+      "sha256": "2765da21e9cc6f4bd3d91a9d4f85dc4ef974fa925c4144a981b9dc8c34805b9d",
+      "size_bytes": 1491
+    },
+    {
+      "path": "scripts/qwen_spike/03_single_tool_call.py",
+      "sha256": "2b2a4dc9e3b12f8202751e7efc019be3a2b559f14096783d34a78fa88e60bf58",
+      "size_bytes": 1517
+    },
+    {
+      "path": "scripts/qwen_spike/04_tool_roundtrip.py",
+      "sha256": "e0f6c9fee03ff79729ef1074e561861da0c6a5ea85e312d14d7c3497ad6f9ee0",
+      "size_bytes": 2861
+    },
+    {
+      "path": "scripts/qwen_spike/05_error_handling.py",
+      "sha256": "f3dbcf3d205fa2558f4312cd8ff553801f3c951c2427445f7f1bf56c44107308",
+      "size_bytes": 1488
+    },
+    {
+      "path": "scripts/qwen_spike/README.md",
+      "sha256": "7a7a7a528b2c1425af9c56770086f88426c718e468a6004fad38452f6c20b550",
+      "size_bytes": 1113
+    },
+    {
+      "path": "scripts/qwen_spike/common.py",
+      "sha256": "a49f85da93096751f856fb1e632d9c28e6d8252578a955d2266c2e0e5a7b6995",
+      "size_bytes": 1569
+    },
+    {
+      "path": "scripts/qwen_spike/results.md",
+      "sha256": "819bf95ac661f7275ccccd4f279de6a84c8ce16cdc8961bb02086b2730ea8e2c",
+      "size_bytes": 1432
+    },
+    {
+      "path": "scripts/qwen_spike/run_all.py",
+      "sha256": "8d48fcc4401888664d6c1843e2f7c638082f705d81aafbcc980bbe99994f0f1c",
+      "size_bytes": 529
+    },
+    {
+      "path": "tests/e2e/.gitkeep",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1
+    }
+  ]
+}

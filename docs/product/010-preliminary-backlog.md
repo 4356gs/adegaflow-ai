@@ -1,0 +1,129 @@
+# Backlog preliminar
+
+## Convenciones
+
+- **P0:** imprescindible para la demo.
+- **P1:** importante si no compromete P0.
+- **P2:** posterior al hackathon.
+- **SP:** estimación preliminar relativa; debe revisarse tras la arquitectura.
+
+## Epic E0 — Gobierno y definición
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-001 | Aprobar visión, problema y usuario principal | P0 | 1 | 0 |
+| AF-002 | Congelar alcance y exclusiones del MVP | P0 | 1 | 0 |
+| AF-003 | Definir caso de uso principal | P0 | 1 | 0 |
+| AF-004 | Definir criterios de éxito y riesgos | P0 | 1 | 0 |
+| AF-005 | Validar reglas y categoría oficial del hackathon | P0 | 2 | 1 |
+
+## Epic E1 — Arquitectura y contratos
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-010 | Diseñar arquitectura de contexto y contenedores | P0 | 3 | 1 |
+| AF-011 | Definir estructura final del repositorio | P0 | 2 | 1 |
+| AF-012 | Definir modelo de datos mínimo | P0 | 3 | 1 |
+| AF-013 | Definir contratos API del flujo principal | P0 | 3 | 1 |
+| AF-014 | Definir esquemas de entrada/salida de tools | P0 | 3 | 1 |
+| AF-015 | Definir estrategia de orquestación | P0 | 3 | 1 |
+| AF-016 | Definir estrategia de memoria | P0 | 2 | 1 |
+| AF-017 | Definir estrategia de prompts y versionado | P0 | 2 | 1 |
+| AF-018 | Redactar ADR-001 a ADR-010 | P0 | 5 | 1 |
+| AF-019 | Ejecutar spike de Qwen Cloud y tool calling | P0 | 5 | 1 |
+
+## Epic E2 — Datos de demostración
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-020 | Crear catálogo ficticio verosímil | P0 | 3 | 2 |
+| AF-021 | Crear stock y reglas de disponibilidad | P0 | 2 | 2 |
+| AF-022 | Crear compradores e historial | P0 | 2 | 2 |
+| AF-023 | Crear escenarios de demo y prueba | P0 | 3 | 2 |
+| AF-024 | Validar consistencia entre catálogo, stock y precios | P0 | 2 | 2 |
+
+## Epic E3 — Núcleo del agente
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-030 | Integrar Qwen Cloud | P0 | 5 | 2 |
+| AF-031 | Implementar extracción estructurada | P0 | 5 | 2 |
+| AF-032 | Implementar clasificación y prioridad | P0 | 3 | 2 |
+| AF-033 | Implementar orquestador del flujo | P0 | 8 | 2 |
+| AF-034 | Implementar validación y reintentos | P0 | 5 | 2 |
+| AF-035 | Implementar registro de ejecución | P0 | 3 | 2 |
+| AF-036 | Implementar fallback del modelo | P0 | 3 | 2 |
+
+## Epic E4 — Herramientas
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-040 | Implementar `search_catalog` | P0 | 3 | 2 |
+| AF-041 | Implementar `check_stock` | P0 | 3 | 2 |
+| AF-042 | Implementar `get_product_details` | P0 | 2 | 2 |
+| AF-043 | Implementar `calculate_quote` | P0 | 5 | 2 |
+| AF-044 | Implementar `retrieve_customer_history` | P0 | 3 | 2 |
+| AF-045 | Implementar `save_customer_memory` | P0 | 3 | 2 |
+| AF-046 | Implementar `create_crm_opportunity` | P0 | 3 | 2 |
+| AF-047 | Implementar `create_followup_task` | P0 | 2 | 2 |
+| AF-048 | Implementar `generate_proposal` | P0 | 3 | 2 |
+| AF-049 | Implementar `draft_email` | P0 | 3 | 2 |
+| AF-050 | Implementar `translate_message` solo si es necesario | P1 | 2 | 2 |
+
+## Epic E5 — Aplicación web
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-060 | Crear acceso demo | P0 | 2 | 3 |
+| AF-061 | Crear bandeja de consultas | P0 | 3 | 3 |
+| AF-062 | Crear entrada manual y escenario predefinido | P0 | 3 | 3 |
+| AF-063 | Mostrar mensaje y datos extraídos | P0 | 3 | 3 |
+| AF-064 | Mostrar clasificación y datos faltantes | P0 | 2 | 3 |
+| AF-065 | Mostrar herramientas y línea de tiempo | P0 | 5 | 3 |
+| AF-066 | Mostrar recomendaciones y stock | P0 | 3 | 3 |
+| AF-067 | Mostrar propuesta y borrador | P0 | 5 | 3 |
+| AF-068 | Mostrar registro CRM y seguimiento | P0 | 3 | 3 |
+| AF-069 | Mostrar memoria recuperada y guardada | P0 | 3 | 3 |
+| AF-070 | Añadir panel de métricas simuladas | P1 | 3 | 3 |
+| AF-071 | Exportar propuesta a PDF | P1 | 5 | 3 |
+
+## Epic E6 — Calidad, seguridad y entrega
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-080 | Pruebas unitarias de tools | P0 | 5 | 2–3 |
+| AF-081 | Prueba end-to-end del escenario principal | P0 | 5 | 3 |
+| AF-082 | Pruebas de fallos de modelo y tools | P0 | 3 | 3 |
+| AF-083 | Configurar Docker y Docker Compose | P0 | 3 | 3 |
+| AF-084 | Configurar variables de entorno y secret scanning | P0 | 2 | 3 |
+| AF-085 | Preparar README reproducible | P0 | 3 | 4 |
+| AF-086 | Preparar guion de demo | P0 | 3 | 4 |
+| AF-087 | Grabar video | P0 | 5 | 4 |
+| AF-088 | Preparar presentación y capturas | P0 | 3 | 4 |
+| AF-089 | Completar submission | P0 | 3 | 4 |
+
+## Epic E7 — Post-hackathon
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-100 | Validar con bodegas reales | P2 | — | Futuro |
+| AF-101 | Diseñar multitenencia | P2 | — | Futuro |
+| AF-102 | Integrar CRM real | P2 | — | Futuro |
+| AF-103 | Integrar correo real con aprobación | P2 | — | Futuro |
+| AF-104 | Evaluar SaaS y modelo comercial | P2 | — | Futuro |
+| AF-105 | Evaluar adaptación a otros subsectores | P2 | — | Futuro |
+
+## Orden de ejecución recomendado
+
+1. Validar hackathon y Qwen Cloud.
+2. Cerrar arquitectura y contratos.
+3. Construir datos y tools.
+4. Completar el flujo backend.
+5. Probar el flujo.
+6. Construir la interfaz.
+7. Congelar funciones.
+8. Preparar demo y submission.
+
+## Política de backlog
+
+Los elementos P1 no comienzan hasta que el escenario principal cumpla todos los criterios P0.

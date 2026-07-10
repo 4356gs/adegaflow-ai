@@ -1,0 +1,53 @@
+"""S-02: verify JSON Object mode and Pydantic schema validation."""
+
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+from common import client, print_json, run_case
+
+MESSAGE = """Hello,
+We are evaluating Galician Albariño for specialised wine shops in Germany.
+We estimate 600 bottles within 60 days and request a price list and samples.
+Best regards, Rhein Selection GmbH
+"""
+
+
+class InquiryAnalysis(BaseModel):
+    language: str
+    intent: Literal["b2b_purchase_inquiry", "other"]
+    market: str | None
+    estimated_bottles: int | None = Field(default=None, ge=1)
+    channel: str | None
+    target_horizon_days: int | None = Field(default=None, ge=1)
+    samples_requested: bool
+    price_list_requested: bool
+    missing_fields: list[str]
+
+
+def operation() -> tuple[dict[str, object], object]:
+    qwen = client()
+    return qwen.complete_json(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "Return only a JSON object. Extract commercial inquiry data without "
+                    "inventing absent facts. Use market ISO country code."
+                ),
+            },
+            {"role": "user", "content": MESSAGE},
+        ],
+        schema=InquiryAnalysis,
+    )
+
+
+def main() -> None:
+    payload, turn = run_case("S-02 structured output", operation)
+    print_json(
+        {"payload": payload, "model": turn.model, "usage": turn.usage.model_dump()}
+    )
+
+
+if __name__ == "__main__":
+    main()
