@@ -43,3 +43,24 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Windows download metadata
+*:Zone.Identifier
+.Zone.Identifier
+
+# Local environment and secrets
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Windows download metadata
+*:Zone.Identifier
+*Zone.Identifier*
