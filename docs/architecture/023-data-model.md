@@ -19,6 +19,7 @@ erDiagram
     OPPORTUNITY ||--o{ FOLLOW_UP_TASK : has
     OPPORTUNITY ||--o{ GENERATED_ARTIFACT : produces
     AGENT_RUN ||--o{ TOOL_EXECUTION : records
+    AGENT_RUN ||--o{ AGENT_RUN_EVENT : emits
 ```
 
 ## Entidades
@@ -80,7 +81,11 @@ Memorias explícitas y auditables; no embeddings.
 | reserved_bottles | integer | >= 0 |
 | updated_at | datetime | UTC |
 
-Stock vendible = `available_bottles - reserved_bottles`.
+Stock vendible:
+
+```text
+max(0, available_bottles - reserved_bottles)
+```
 
 ### `inquiries`
 
@@ -95,6 +100,8 @@ Stock vendible = `available_bottles - reserved_bottles`.
 | extracted_data | JSON | esquema versionado |
 | missing_fields | JSON | lista |
 | received_at | datetime | UTC |
+
+`extracted_data` conserva únicamente datos que validan contra el esquema estructurado vigente. `missing_fields` se calcula mediante reglas de aplicación, no mediante opinión del modelo.
 
 ### `opportunities`
 
@@ -114,6 +121,8 @@ Stock vendible = `available_bottles - reserved_bottles`.
 | summary | text | obligatorio |
 | created_at | datetime | UTC |
 | updated_at | datetime | UTC |
+
+La tabla existe para bloques posteriores. Sprint 2 Bloque 5 no crea ni actualiza oportunidades.
 
 ### `quotes`
 
@@ -164,18 +173,38 @@ Stock vendible = `available_bottles - reserved_bottles`.
 
 ### `agent_runs`
 
+Una inquiry puede tener múltiples runs. Esto permite reintentos y conserva el historial sin sobrescribir ejecuciones anteriores.
+
 | Campo | Tipo | Regla |
 |---|---|---|
 | id | UUID | PK |
 | inquiry_id | UUID | FK |
+| correlation_id | UUID | único, visible en logs |
 | status | enum | queued, running, completed, failed, needs_review |
 | model | string | modelo efectivo |
 | prompt_versions | JSON | mapa de prompts |
+| result_payload | JSON | resultado validado o parcial |
 | started_at | datetime | UTC |
 | completed_at | datetime | opcional |
-| current_step | string | visible en UI |
+| current_step | string | paso visible |
 | error_code | string | opcional |
 | error_message_safe | string | opcional |
+
+`status` representa el estado global. `current_step` representa la fase funcional activa.
+
+Pasos previstos para el Bloque 5:
+
+- queued;
+- analyzing;
+- retrieving_memory;
+- selecting_products;
+- checking_stock;
+- validating_recommendation;
+- completed;
+- needs_review;
+- failed.
+
+`result_payload` puede contener la recomendación validada o un resultado parcial seguro. No contiene una cotización ni importes totales.
 
 ### `tool_executions`
 
@@ -183,14 +212,93 @@ Stock vendible = `available_bottles - reserved_bottles`.
 |---|---|---|
 | id | UUID | PK |
 | agent_run_id | UUID | FK |
-| sequence | integer | orden |
+| sequence | integer | orden por run |
 | tool_name | string | obligatorio |
 | input_payload | JSON | secretos excluidos |
 | output_payload | JSON | resumido si es grande |
-| status | enum | started, succeeded, failed |
+| status | enum | started, succeeded, failed, rejected |
 | started_at | datetime | UTC |
 | duration_ms | integer | >= 0 |
 | error_code | string | opcional |
+
+Restricción:
+
+```text
+unique(agent_run_id, sequence)
+```
+
+Cada intento cuenta dentro del límite del run, incluso cuando se rechaza por tool desconocida, argumentos inválidos o límite alcanzado.
+
+### `agent_run_events`
+
+Eventos funcionales visibles para auditoría y futura interfaz.
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| id | UUID | PK |
+| agent_run_id | UUID | FK |
+| sequence | integer | orden por run |
+| event_type | string | obligatorio |
+| step | string | fase asociada |
+| payload | JSON | resumen seguro |
+| created_at | datetime | UTC |
+
+Restricción:
+
+```text
+unique(agent_run_id, sequence)
+```
+
+Eventos mínimos del Bloque 5:
+
+- run_created;
+- step_changed;
+- analysis_reused;
+- analysis_completed;
+- memory_retrieval_skipped;
+- memory_retrieved;
+- model_round_completed;
+- tool_requested;
+- tool_started;
+- tool_succeeded;
+- tool_failed;
+- tool_rejected;
+- recommendation_received;
+- recommendation_rejected;
+- recommendation_validated;
+- run_completed;
+- run_needs_review;
+- run_failed.
+
+Los eventos no almacenan cadena de pensamiento. Solo contienen identificadores, conteos, resultados resumidos, reglas aplicadas, estados y errores seguros.
+
+## Recomendación de producto
+
+No se crea una tabla `recommendations` en el MVP.
+
+La recomendación se persiste en `agent_runs.result_payload` porque:
+
+- todavía no posee un ciclo de vida independiente;
+- no existe API de recomendaciones;
+- no se cotiza ni se reserva inventario;
+- crear un agregado adicional aumentaría el alcance sin valor inmediato.
+
+La recomendación validada conserva:
+
+- product_id;
+- SKU;
+- nombre;
+- cantidad;
+- unidades por caja;
+- cajas;
+- precio unitario en céntimos;
+- stock vendible observado;
+- rationale;
+- resumen;
+- advertencias;
+- estado de validación.
+
+No conserva subtotal, impuestos, transporte, aranceles ni margen.
 
 ## Estrategia de migración
 
@@ -199,11 +307,18 @@ Stock vendible = `available_bottles - reserved_bottles`.
 - SQLite durante el MVP.
 - Repositorios evitan dependencia directa del motor.
 - Una migración futura a PostgreSQL no debe cambiar contratos de dominio.
+- La migración de trazabilidad debe ser reversible.
+- Las llamadas a Qwen no se realizan dentro de transacciones SQLite abiertas.
 
 ## Datos que no se persistirán
 
 - razonamiento interno o cadena de pensamiento;
 - API keys;
+- cabeceras de autorización;
+- variables de entorno completas;
 - respuestas completas del proveedor cuando no sean necesarias;
 - datos personales innecesarios;
-- comunicaciones enviadas, porque no se envían en el MVP.
+- comunicaciones enviadas, porque no se envían en el MVP;
+- cotizaciones en Sprint 2 Bloque 5;
+- reservas de stock;
+- tasas de cambio inventadas.

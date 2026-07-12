@@ -8,7 +8,34 @@ Se implementará un **orquestador único, acotado y basado en estados**, con cap
 
 El caso de uso es secuencial, con reglas verificables y una fecha de entrega cercana. Separar agentes físicamente aumentaría latencia, coste, errores y dificultad de depuración sin demostrar un beneficio medible.
 
-## Estado de ejecución
+## Estado global y paso actual
+
+`agent_runs.status` representa el estado global:
+
+- `queued`;
+- `running`;
+- `completed`;
+- `needs_review`;
+- `failed`.
+
+`agent_runs.current_step` representa la fase funcional:
+
+- `queued`;
+- `analyzing`;
+- `retrieving_memory`;
+- `selecting_products`;
+- `checking_stock`;
+- `validating_recommendation`;
+- `calculating_quote`;
+- `generating_artifacts`;
+- `persisting_actions`;
+- `completed`;
+- `needs_review`;
+- `failed`.
+
+La separación evita convertir cada paso interno en un estado global incompatible con reintentos o futuras ampliaciones.
+
+## Estado de ejecución completo
 
 ```mermaid
 stateDiagram-v2
@@ -17,7 +44,8 @@ stateDiagram-v2
     ANALYZING --> RETRIEVING_MEMORY
     RETRIEVING_MEMORY --> SELECTING_PRODUCTS
     SELECTING_PRODUCTS --> CHECKING_STOCK
-    CHECKING_STOCK --> CALCULATING_QUOTE
+    CHECKING_STOCK --> VALIDATING_RECOMMENDATION
+    VALIDATING_RECOMMENDATION --> CALCULATING_QUOTE
     CALCULATING_QUOTE --> GENERATING_ARTIFACTS
     GENERATING_ARTIFACTS --> PERSISTING_ACTIONS
     PERSISTING_ACTIONS --> NEEDS_REVIEW
@@ -27,19 +55,25 @@ stateDiagram-v2
     RETRIEVING_MEMORY --> FAILED
     SELECTING_PRODUCTS --> FAILED
     CHECKING_STOCK --> FAILED
+    VALIDATING_RECOMMENDATION --> FAILED
     CALCULATING_QUOTE --> FAILED
     GENERATING_ARTIFACTS --> FAILED
     PERSISTING_ACTIONS --> FAILED
 ```
+
+Sprint 2 Bloque 5 finaliza en `completed`, `needs_review` o `failed` después de la validación de la recomendación. No continúa todavía a cotización, artefactos o acciones internas.
 
 ## Flujo detallado
 
 ### 1. Ingesta
 
 - guardar mensaje original;
-- detectar o asociar comprador;
+- asociar comprador cuando ya se conozca;
 - crear `agent_run`;
-- asignar `correlation_id`.
+- asignar `correlation_id`;
+- registrar `run_created`.
+
+La creación automática de compradores queda fuera del Bloque 5.
 
 ### 2. Análisis estructurado
 
@@ -54,62 +88,250 @@ Devuelve JSON con:
 
 - idioma;
 - intención;
-- tipo de comprador;
+- mercado;
 - datos comerciales;
-- campos faltantes;
-- señales de prioridad;
-- resumen.
+- producto de interés;
+- volumen;
+- canal;
+- horizonte o fecha;
+- solicitudes de muestras y precios;
+- información de comprador cuando exista.
 
-El backend valida con Pydantic y aplica una corrección controlada si el JSON no es válido.
+El backend:
+
+- valida con Pydantic;
+- normaliza códigos;
+- calcula campos faltantes de forma determinista;
+- persiste únicamente datos válidos.
+
+Un análisis ya persistido se reutiliza solo si vuelve a validar contra el esquema vigente. La reutilización se registra como `analysis_reused`.
 
 ### 3. Recuperación de memoria
 
-`retrieve_customer_history` devuelve hechos activos, preferencias y oportunidades previas. El agente solo recibe el contexto relevante.
+Cuando existe `customer_id`, `retrieve_customer_history` se ejecuta de forma determinista antes de seleccionar productos.
 
-### 4. Selección asistida de productos
+La tool devuelve:
 
-Qwen Cloud recibe herramientas de lectura:
+- hechos activos;
+- preferencias;
+- restricciones;
+- interacciones;
+- oportunidades anteriores resumidas.
+
+Solo el contexto relevante se entrega al modelo.
+
+Cuando no existe `customer_id`:
+
+- no se crea un cliente;
+- la recuperación se omite;
+- se registra `memory_retrieval_skipped`;
+- el flujo puede continuar sin memoria.
+
+### 4. Tool registry
+
+Existe una allowlist cerrada con exactamente:
+
+- `search_catalog`;
+- `get_product_details`;
+- `check_stock`;
+- `retrieve_customer_history`.
+
+Cada entrada del registry contiene:
+
+- nombre;
+- descripción;
+- modelo Pydantic de entrada;
+- JSON Schema;
+- ejecutor local;
+- versión;
+- política de reintento.
+
+El modelo nunca proporciona rutas, módulos, funciones ni código ejecutable.
+
+Durante la fase de selección se exponen a Qwen:
 
 - `search_catalog`;
 - `get_product_details`;
 - `check_stock`.
 
-La aplicación ejecuta las llamadas y devuelve los resultados al modelo. El ciclo finaliza cuando:
+`retrieve_customer_history` permanece en el registry, pero se invoca de forma determinista antes del ciclo de selección.
 
-- existe una selección válida;
+### 5. Selección asistida de productos
+
+Qwen Cloud recibe:
+
+- mensaje original;
+- análisis validado;
+- campos faltantes;
+- memoria relevante;
+- resultados acumulados de tools;
+- política de no invención;
+- esquema del borrador de recomendación.
+
+La aplicación ejecuta las llamadas y devuelve resultados estructurados al modelo.
+
+El ciclo finaliza cuando:
+
+- existe un borrador de recomendación;
 - el modelo no solicita más tools;
-- se alcanza el máximo de rondas.
+- se alcanza el máximo de rondas;
+- se alcanza el máximo de ejecuciones;
+- ocurre un fallo no recuperable.
 
-**Límite MVP:** máximo 6 rondas y máximo 10 ejecuciones de tools por run.
+### 6. Límites del MVP
 
-### 5. Validación determinista
+```text
+MAX_MODEL_ROUNDS = 6
+MAX_TOOL_EXECUTIONS = 10
+MAX_READ_TOOL_RETRIES = 1
+MAX_RECOMMENDATION_CORRECTIONS = 1
+```
+
+Reglas:
+
+- cada llamada lógica al modelo incrementa las rondas;
+- cada intento de tool incrementa las ejecuciones;
+- múltiples tool calls se procesan en orden;
+- no se inicia una ejecución que exceda el límite;
+- no existe recursión agentic;
+- al agotar límites, el run termina `needs_review`.
+
+### 7. Borrador de recomendación
+
+El modelo devuelve únicamente:
+
+- schema_version;
+- product_id;
+- quantity_bottles;
+- rationale;
+- summary;
+- warnings.
+
+El modelo no es fuente de verdad para:
+
+- SKU;
+- nombre oficial;
+- precio;
+- moneda;
+- stock;
+- cajas;
+- unidades por caja;
+- certificaciones.
+
+El backend enriquece la recomendación utilizando exclusivamente resultados verificados de catálogo y stock.
+
+### 8. Validación determinista
 
 El backend verifica:
 
-- productos activos;
-- disponibilidad;
+- productos existentes y activos;
+- ausencia de IDs duplicados;
+- productos obtenidos previamente mediante tools;
+- detalles recuperados;
+- disponibilidad consultada;
 - suma de cantidades;
-- formato de cajas;
+- cantidades positivas;
+- divisibilidad por caja;
+- número derivado de cajas;
+- stock suficiente;
+- coincidencia de mercado y canal;
+- certificaciones requeridas;
 - moneda;
-- precio;
-- ausencia de certificaciones inventadas.
+- precio unitario proveniente del catálogo.
 
-Una recomendación inválida se rechaza y se solicita una corrección con el error estructurado.
+Una recomendación inválida se rechaza con errores estructurados.
 
-### 6. Cotización
+Errores corregibles permiten una sola corrección del modelo:
+
+- suma incorrecta;
+- cantidad no divisible por caja;
+- producto duplicado;
+- stock insuficiente;
+- selección fuera del conjunto recuperado.
+
+No se corrige silenciosamente la selección del modelo.
+
+### 9. Resultado del Bloque 5
+
+Una recomendación válida se persiste en `agent_runs.result_payload`.
+
+El resultado puede contener:
+
+- productos validados;
+- cantidades;
+- cajas;
+- precios unitarios;
+- stock observado;
+- rationale;
+- resumen;
+- advertencias;
+- total de botellas;
+- moneda EUR;
+- estado de validación.
+
+No contiene:
+
+- subtotal;
+- impuestos;
+- transporte;
+- aranceles;
+- margen;
+- cotización.
+
+### 10. Aplicación limitada del presupuesto
+
+Cuando existen presupuesto total en EUR y volumen estimado:
+
+```text
+max_unit_price_cents = budget_total_cents // estimated_bottles
+```
+
+Ese valor puede aplicarse como filtro conservador de catálogo.
+
+No se realizan:
+
+- conversiones de moneda;
+- cálculos de oferta;
+- distribución monetaria por producto;
+- cotizaciones.
+
+Cuando la moneda no es EUR o falta, el presupuesto no se aplica y se añade una advertencia.
+
+### 11. Transacciones
+
+No se mantiene una transacción SQLite abierta durante una llamada a Qwen.
+
+Patrón:
+
+```text
+persist state/event
+commit
+call provider
+validate response
+persist state/event
+commit
+```
+
+Las tools de lectura no modifican catálogo, inventario ni memoria.
+
+### 12. Cotización
 
 `calculate_quote` calcula importes. El modelo no realiza aritmética monetaria vinculante.
 
-### 7. Artefactos
+Esta fase queda fuera del Sprint 2 Bloque 5.
+
+### 13. Artefactos
 
 - `generate_proposal` produce una estructura de propuesta;
 - Qwen redacta la narrativa usando únicamente datos verificados;
 - `draft_email` prepara la respuesta en el idioma detectado;
 - ambos quedan en estado `needs_review`.
 
-### 8. Acciones internas
+Esta fase queda fuera del Sprint 2 Bloque 5.
 
-Tras validar los resultados:
+### 14. Acciones internas
+
+Tras validar resultados futuros:
 
 - `create_crm_opportunity`;
 - `create_followup_task`;
@@ -117,10 +339,13 @@ Tras validar los resultados:
 
 Estas acciones son reversibles dentro de la demo y no afectan sistemas externos.
 
-### 9. Punto de control humano
+Esta fase queda fuera del Sprint 2 Bloque 5.
 
-La interfaz muestra:
+### 15. Punto de control humano
 
+La futura interfaz mostrará:
+
+- recomendación;
 - propuesta;
 - correo;
 - supuestos;
@@ -134,19 +359,36 @@ No existe tool de envío real.
 
 | Clase | Ejemplos | Ejecución |
 |---|---|---|
-| Lectura | catálogo, stock, historial | El modelo puede solicitarlas |
+| Lectura | catálogo, stock, historial | Modelo o fase determinista |
 | Cálculo | cotización | Orquestador o modelo, siempre validada |
 | Escritura interna | CRM, seguimiento, memoria | Orquestador tras validación |
 | Acción externa | enviar email, reservar stock | No disponible en MVP |
 
+## Estados terminales del Bloque 5
+
+| Condición | Estado |
+|---|---|
+| Recomendación válida | completed |
+| Resultado parcial útil | needs_review |
+| Stock insuficiente sin alternativa | needs_review |
+| Sin candidatos compatibles | needs_review |
+| Límite alcanzado | needs_review |
+| Tool desconocida no corregida | needs_review |
+| JSON inválido después de reparación | failed |
+| Qwen no disponible definitivamente | failed |
+| Error de persistencia | failed |
+| Error inesperado | failed |
+
 ## Fallbacks
 
 1. **JSON inválido:** segundo intento de reparación; luego fallo controlado.
-2. **Tool desconocida:** rechazo, log y corrección.
+2. **Tool desconocida:** rechazo, registro y corrección controlada.
 3. **Parámetros inválidos:** error estructurado al modelo.
-4. **Stock insuficiente:** nueva selección o respuesta de clarificación.
-5. **Qwen no disponible:** mostrar estado fallido y permitir reintentar.
-6. **Rondas agotadas:** finalizar como `needs_review` con resultados parciales.
+4. **Stock insuficiente:** nueva selección o `needs_review`.
+5. **Qwen no disponible:** estado fallido y posibilidad de reintento futuro.
+6. **Rondas agotadas:** `needs_review` con resultados parciales.
+7. **Tools agotadas:** `needs_review`; no se ejecutan llamadas adicionales.
+8. **Persistencia fallida:** rollback y error seguro.
 
 ## Lo que no se almacenará
 
@@ -154,9 +396,11 @@ No se persistirá cadena de pensamiento. La trazabilidad mostrará:
 
 - decisión resumida;
 - tool solicitada;
-- parámetros;
-- resultado;
+- parámetros validados;
+- resultado resumido;
 - regla aplicada;
-- estado.
+- estado;
+- error seguro;
+- duración.
 
 Esto es suficiente para auditoría de producto sin exponer razonamiento privado del modelo.
