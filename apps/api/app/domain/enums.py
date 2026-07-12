@@ -33,3 +33,30 @@ class OpportunityPriority(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+
+
+class AgentRunStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    NEEDS_REVIEW = "needs_review"
+    FAILED = "failed"
+
+
+class AgentRunStep(StrEnum):
+    QUEUED = "queued"
+    ANALYZING = "analyzing"
+    RETRIEVING_MEMORY = "retrieving_memory"
+    SELECTING_PRODUCTS = "selecting_products"
+    CHECKING_STOCK = "checking_stock"
+    VALIDATING_RECOMMENDATION = "validating_recommendation"
+    COMPLETED = "completed"
+    NEEDS_REVIEW = "needs_review"
+    FAILED = "failed"
+
+
+class ToolExecutionStatus(StrEnum):
+    STARTED = "started"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    REJECTED = "rejected"
