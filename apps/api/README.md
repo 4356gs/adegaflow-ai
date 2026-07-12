@@ -1,6 +1,6 @@
 # AdegaFlow AI API
 
-FastAPI backend, Qwen Cloud adapter, SQLite persistence and deterministic commercial tools.
+FastAPI backend, Qwen Cloud adapter, SQLite persistence, structured inquiry analysis and deterministic commercial tools.
 
 ## Requirements
 
@@ -46,6 +46,19 @@ Endpoints currently exposed:
 - OpenAPI: `/docs`
 
 The catalog, stock and customer-history tools are implemented as typed application services. They are not exposed through temporary HTTP endpoints because the approved architecture places them behind the later orchestrator and API contracts.
+
+## Structured inquiry analysis
+
+`InquiryAnalysisService`:
+
+- loads the versioned `inquiry_analysis.v1` prompt;
+- requests JSON Object mode through the provider-neutral client protocol;
+- validates the response with Pydantic;
+- computes missing fields deterministically;
+- persists only validated extraction data;
+- marks provider or schema failures with safe application errors.
+
+The analysis service is not exposed through a temporary endpoint. It will be invoked by the bounded orchestrator and later by the approved inquiry API.
 
 ## Quality
 
