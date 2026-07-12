@@ -1,15 +1,15 @@
 # AdegaFlow AI API
 
-Bootstrap técnico del backend FastAPI y adaptador Qwen Cloud.
+FastAPI backend, Qwen Cloud adapter, SQLite persistence and deterministic commercial tools.
 
-## Requisitos
+## Requirements
 
 - Python 3.12+
-- una API key de Qwen Cloud para ejecutar pruebas live
+- Qwen Cloud API key only for live provider tests and later live runs
 
-## Instalación
+## Installation
 
-Desde la raíz:
+From the repository root:
 
 ```bash
 python -m venv .venv
@@ -18,32 +18,57 @@ python -m pip install -e "./apps/api[dev]"
 cp .env.example .env
 ```
 
-## Ejecución
+## Database and demo data
+
+```bash
+make db-upgrade
+make seed-demo
+```
+
+The seed command is idempotent. To restore canonical demo values:
+
+```bash
+make seed-demo-reset
+```
+
+The reset command deletes the current MVP demo tables before loading the fixed dataset.
+
+## Execution
 
 ```bash
 make run-api
 ```
 
-Endpoints:
+Endpoints currently exposed:
 
 - `GET /health`
 - `GET /api/v1/health`
 - OpenAPI: `/docs`
 
-## Calidad
+The catalog, stock and customer-history tools are implemented as typed application services. They are not exposed through temporary HTTP endpoints because the approved architecture places them behind the later orchestrator and API contracts.
+
+## Quality
 
 ```bash
 make check-api
 ```
 
+## Persistence configuration
+
+- `DATABASE_URL` — defaults to `sqlite:///./data/adegaflow.db`
+- `DEMO_SEED_PATH` — defaults to `data/seeds/demo_seed.json`
+
+SQLite is the accepted MVP store. The repository layer isolates tool logic from direct engine access and preserves a future PostgreSQL migration path.
+
 ## Qwen Cloud
 
-El cliente utiliza el endpoint OpenAI-compatible configurado mediante:
+The client uses the OpenAI-compatible endpoint configured with:
 
 - `DASHSCOPE_API_KEY`
 - `QWEN_BASE_URL`
 - `QWEN_MODEL`
 - `QWEN_FALLBACK_MODEL`
 - `QWEN_TIMEOUT_SECONDS`
+- `QWEN_MAX_RETRIES`
 
-La aplicación puede arrancar sin clave. Los endpoints informan `qwen_configured=false`; las llamadas al proveedor fallan con un error tipado y seguro.
+The application can start without a key. Live provider calls fail with a typed, safe configuration error.

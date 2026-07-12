@@ -1,4 +1,4 @@
-.PHONY: install-api run-api test-api lint-api format-api typecheck-api check-api docker-api qwen-spike
+.PHONY: install-api run-api test-api lint-api format-api typecheck-api check-api docker-api qwen-spike db-upgrade db-downgrade db-reset seed-demo seed-demo-reset
 
 install-api:
 	python -m pip install -e "./apps/api[dev]"
@@ -19,6 +19,23 @@ typecheck-api:
 	mypy apps/api/app
 
 check-api: lint-api typecheck-api test-api
+
+db-upgrade:
+	alembic -c apps/api/alembic.ini upgrade head
+
+db-downgrade:
+	alembic -c apps/api/alembic.ini downgrade -1
+
+db-reset:
+	alembic -c apps/api/alembic.ini downgrade base
+	alembic -c apps/api/alembic.ini upgrade head
+	PYTHONPATH=apps/api python -m app.db.seed --reset
+
+seed-demo:
+	PYTHONPATH=apps/api python -m app.db.seed
+
+seed-demo-reset:
+	PYTHONPATH=apps/api python -m app.db.seed --reset
 
 docker-api:
 	docker compose up --build api

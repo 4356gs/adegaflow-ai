@@ -6,9 +6,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system adegaflow && adduser --system --ingroup adegaflow adegaflow
+RUN addgroup --system adegaflow \
+    && adduser --system --ingroup adegaflow adegaflow \
+    && mkdir -p /app/runtime /app/data \
+    && chown -R adegaflow:adegaflow /app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
+COPY alembic ./alembic
 COPY app ./app
 
 RUN python -m pip install --upgrade pip \

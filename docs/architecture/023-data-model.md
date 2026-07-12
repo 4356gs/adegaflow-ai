@@ -66,6 +66,7 @@ Memorias explícitas y auditables; no embeddings.
 | price_cents | integer | EUR, no `float` |
 | units_per_case | integer | > 0 |
 | recommended_markets | JSON | lista |
+| recommended_channels | JSON | lista de canales comerciales |
 | tasting_notes | text | opcional |
 | certifications | JSON | lista |
 | active | boolean | default true |
