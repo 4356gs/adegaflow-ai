@@ -1,6 +1,6 @@
 # Verification Report
 
-Date: 2026-07-11
+Date: 2026-07-12
 
 ## Qwen Cloud gate
 
@@ -13,28 +13,37 @@ Date: 2026-07-11
 | Missing-key error case | Passed |
 | Invalid-credential case | Pending explicit execution |
 
-## Persistence and read-tools implementation package
-
-The implementation package was validated in an isolated Python environment before handoff:
+## Repository baseline after PR #1
 
 | Check | Result |
 |---|---|
-| Ruff on new/modified block | Passed |
-| mypy strict on new/modified block | Passed, 19 source files |
-| pytest for new block | Passed, 13 tests |
-| Coverage for new block | 92.51% |
-| Alembic upgrade/downgrade | Passed |
+| Ruff | Passed |
+| mypy strict | Passed, 29 source files |
+| pytest | Passed, 23 tests |
+| Alembic upgrade | Passed |
 | Seed second execution | Passed without duplicates |
-| Documented 900-bottle stock shortfall | Passed: 720 sellable, 180 shortfall |
 
-## Required repository-level verification after application
+## Structured inquiry-analysis package
 
-Run in WSL from the actual repository:
+The Block 4 implementation was validated in an isolated reconstruction before handoff:
+
+| Check | Result |
+|---|---|
+| Ruff on new block | Passed |
+| mypy strict on reconstructed API package | Passed |
+| Block 4 pytest suite | Passed, 7 tests |
+| Primary German inquiry persistence | Passed |
+| Deterministic missing fields | Passed |
+| Invalid payload failure state | Passed |
+| Provider timeout failure state | Passed |
+| Packaged versioned prompt | Passed |
+
+## Required target-repository verification
+
+Run in WSL after applying Block 4:
 
 ```bash
-make db-upgrade
-make seed-demo
 make check-api
 ```
 
-The combined repository result must be recorded after those commands execute locally. Docker build remains to be verified in the user's Docker environment.
+The branch must not be pushed or merged unless the combined repository checks pass. Docker behavior is unchanged by this block.

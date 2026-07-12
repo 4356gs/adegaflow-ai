@@ -11,6 +11,10 @@
 - Typed tools: `search_catalog`, `get_product_details`, `check_stock` and `retrieve_customer_history`.
 - Unit and integration tests for migrations, seeds, stock rules and tool contracts.
 - Docker persistent SQLite volume and database commands.
+- Versioned `inquiry_analysis.v1` prompt packaged with the API.
+- Typed structured inquiry schema and deterministic missing-field rules.
+- Inquiry-analysis service with validated persistence and safe failure states.
+- Unit and integration tests for normalization, persistence and provider failures.
 
 ### Changed
 

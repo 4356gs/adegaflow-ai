@@ -11,7 +11,8 @@ Autonomous commercial opportunity agent for Galician wineries, built for the Qwe
 - Sprint 2 Block 1 — Qwen spike: **approved (S-01 to S-04)**
 - Sprint 2 Block 2 — SQLite persistence and reproducible seeds: **implemented**
 - Sprint 2 Block 3 — Read tools: **implemented**
-- Next block — Structured inquiry analysis
+- Sprint 2 Block 4 — Structured inquiry analysis: **implemented**
+- Next block — Bounded orchestration and recommendation
 
 The frontend remains intentionally deferred until the backend contract and critical acceptance scenarios are stable.
 
@@ -44,7 +45,7 @@ Open:
 - API health: `http://localhost:8000/health`
 - OpenAPI: `http://localhost:8000/docs`
 
-The read tools are currently application services. HTTP endpoints and the bounded tool registry enter in later Sprint 2 blocks.
+The read tools and structured inquiry-analysis service are currently application services. HTTP endpoints and the bounded tool registry enter in later Sprint 2 blocks.
 
 ## Database operations
 
@@ -78,7 +79,7 @@ SQLite runtime data is stored in the named volume `adegaflow-data`. Demo seed fi
 ## Repository
 
 ```text
-apps/api/                 FastAPI service, persistence and tools
+apps/api/                 FastAPI service, persistence, prompts and tools
 scripts/qwen_spike/       External integration gate
 docs/                    Product, architecture, ADR, hackathon, implementation
 data/seeds/              Reproducible fictitious demo dataset
