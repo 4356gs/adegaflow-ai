@@ -1,0 +1,241 @@
+{
+  "seed_version": "1.0",
+  "organization": {
+    "name": "Adega Demo Atlántica",
+    "region": "Galicia",
+    "currency": "EUR",
+    "default_language": "es",
+    "demo_only": true
+  },
+  "products": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "sku": "ADA-ALB-JOV-2025",
+      "name": "Brétema Albariño 2025",
+      "category": "albarino_joven",
+      "variety": "Albariño",
+      "vintage": 2025,
+      "description": "Albariño joven, fresco y directo, orientado a distribución especializada y restauración.",
+      "price_cents": 840,
+      "units_per_case": 6,
+      "recommended_markets": ["DE", "ES", "SE"],
+      "recommended_channels": ["specialty_retail", "hospitality"],
+      "tasting_notes": "Cítricos, manzana verde y final salino.",
+      "certifications": [],
+      "active": true,
+      "inventory": {
+        "available_bottles": 1260,
+        "reserved_bottles": 60,
+        "updated_at": "2026-07-10T09:00:00+00:00"
+      }
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "sku": "ADA-ALB-LIA-2024",
+      "name": "Luar sobre Lías 2024",
+      "category": "albarino_sobre_lias",
+      "variety": "Albariño",
+      "vintage": 2024,
+      "description": "Albariño con crianza sobre lías, mayor volumen y complejidad para tiendas especializadas.",
+      "price_cents": 1190,
+      "units_per_case": 6,
+      "recommended_markets": ["DE", "SE", "GB"],
+      "recommended_channels": ["specialty_retail", "hospitality"],
+      "tasting_notes": "Fruta de hueso, hierbas finas y textura cremosa.",
+      "certifications": [],
+      "active": true,
+      "inventory": {
+        "available_bottles": 780,
+        "reserved_bottles": 60,
+        "updated_at": "2026-07-10T09:00:00+00:00"
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "sku": "ADA-ESP-BRUT-2023",
+      "name": "Mar de Escuma Brut 2023",
+      "category": "espumoso",
+      "variety": "Albariño",
+      "vintage": 2023,
+      "description": "Espumoso brut de producción limitada para restauración y comercios especializados.",
+      "price_cents": 1350,
+      "units_per_case": 6,
+      "recommended_markets": ["ES", "DE"],
+      "recommended_channels": ["hospitality", "specialty_retail"],
+      "tasting_notes": "Burbuja fina, cítricos y panadería ligera.",
+      "certifications": [],
+      "active": true,
+      "inventory": {
+        "available_bottles": 200,
+        "reserved_bottles": 20,
+        "updated_at": "2026-07-10T09:00:00+00:00"
+      }
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "sku": "ADA-PAR-2023",
+      "name": "Pedra do Norte 2023",
+      "category": "vino_de_parcela",
+      "variety": "Albariño",
+      "vintage": 2023,
+      "description": "Vino de parcela para propuestas premium de bajo volumen.",
+      "price_cents": 1890,
+      "units_per_case": 6,
+      "recommended_markets": ["DE", "SE"],
+      "recommended_channels": ["specialty_retail", "fine_dining"],
+      "tasting_notes": "Mineral, estructurado y de final persistente.",
+      "certifications": [],
+      "active": true,
+      "inventory": {
+        "available_bottles": 108,
+        "reserved_bottles": 12,
+        "updated_at": "2026-07-10T09:00:00+00:00"
+      }
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "sku": "ADA-LIM-2022",
+      "name": "Colección Atlántica 2022",
+      "category": "edicion_limitada",
+      "variety": "Albariño",
+      "vintage": 2022,
+      "description": "Edición limitada de guarda, no orientada a pedidos de volumen.",
+      "price_cents": 2600,
+      "units_per_case": 3,
+      "recommended_markets": ["DE", "SE"],
+      "recommended_channels": ["collectors", "fine_dining"],
+      "tasting_notes": "Complejo, especiado y de larga evolución.",
+      "certifications": [],
+      "active": true,
+      "inventory": {
+        "available_bottles": 33,
+        "reserved_bottles": 3,
+        "updated_at": "2026-07-10T09:00:00+00:00"
+      }
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "sku": "ADA-TST-MIX",
+      "name": "Estuche Descubrimento",
+      "category": "degustacion",
+      "variety": "Mixto",
+      "vintage": null,
+      "description": "Estuche de degustación para compradores profesionales y evaluación de muestras.",
+      "price_cents": 1500,
+      "units_per_case": 6,
+      "recommended_markets": ["DE", "ES", "SE"],
+      "recommended_channels": ["samples", "specialty_retail"],
+      "tasting_notes": null,
+      "certifications": [],
+      "active": true,
+      "inventory": {
+        "available_bottles": 54,
+        "reserved_bottles": 6,
+        "updated_at": "2026-07-10T09:00:00+00:00"
+      }
+    }
+  ],
+  "customers": [
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "company_name": "Rhein Selection GmbH",
+      "country_code": "DE",
+      "contact_name": "Anna Keller",
+      "email": "anna.keller@example.invalid",
+      "preferred_language": "en",
+      "created_at": "2026-05-14T10:00:00+00:00",
+      "updated_at": "2026-06-20T15:30:00+00:00"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+      "company_name": "Nordic Cellars Demo AB",
+      "country_code": "SE",
+      "contact_name": "Erik Lund",
+      "email": "erik.lund@example.invalid",
+      "preferred_language": "en",
+      "created_at": "2026-04-03T08:45:00+00:00",
+      "updated_at": "2026-06-18T11:20:00+00:00"
+    }
+  ],
+  "inquiries": [
+    {
+      "id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+      "customer_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "source": "demo",
+      "raw_message": "Please send technical sheets for your Atlantic white wines.",
+      "detected_language": "en",
+      "status": "completed",
+      "extracted_data": {
+        "intent": "product_information",
+        "market": "DE",
+        "channel": "specialty_retail"
+      },
+      "missing_fields": ["volume", "target_date"],
+      "received_at": "2026-06-20T14:00:00+00:00"
+    }
+  ],
+  "customer_memories": [
+    {
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+      "customer_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "category": "preference",
+      "content": "Interested in Atlantic white wines for specialised retail in Germany.",
+      "confidence": 0.96,
+      "source_inquiry_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+      "is_active": true,
+      "created_at": "2026-06-20T14:05:00+00:00",
+      "invalidated_at": null
+    },
+    {
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2",
+      "customer_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "category": "interaction",
+      "content": "Previously requested technical sheets before discussing prices.",
+      "confidence": 1.0,
+      "source_inquiry_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+      "is_active": true,
+      "created_at": "2026-06-20T14:06:00+00:00",
+      "invalidated_at": null
+    },
+    {
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3",
+      "customer_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "category": "constraint",
+      "content": "Old preference for mixed cases; superseded by later conversation.",
+      "confidence": 0.70,
+      "source_inquiry_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+      "is_active": false,
+      "created_at": "2026-05-14T10:10:00+00:00",
+      "invalidated_at": "2026-06-20T14:10:00+00:00"
+    },
+    {
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb4",
+      "customer_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+      "category": "preference",
+      "content": "Prefers premium references for restaurant accounts.",
+      "confidence": 0.90,
+      "source_inquiry_id": null,
+      "is_active": true,
+      "created_at": "2026-06-18T11:20:00+00:00",
+      "invalidated_at": null
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1",
+      "inquiry_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+      "customer_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "title": "German technical evaluation — Atlantic whites",
+      "stage": "follow_up",
+      "priority": "medium",
+      "score": 68,
+      "market": "DE",
+      "channel": "specialty_retail",
+      "estimated_bottles": 120,
+      "target_date": "2026-08-15",
+      "summary": "Historical demo opportunity created after a request for technical sheets.",
+      "created_at": "2026-06-20T14:15:00+00:00",
+      "updated_at": "2026-06-27T09:00:00+00:00"
+    }
+  ]
+}

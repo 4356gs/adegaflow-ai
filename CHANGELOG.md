@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- SQLAlchemy 2.0 persistence boundary and SQLite session management.
+- Initial Alembic migration for products, inventory, customers, inquiries, memories and opportunities.
+- Reproducible, idempotent demo seed dataset.
+- Repository adapters for catalog, stock and customer history.
+- Typed tools: `search_catalog`, `get_product_details`, `check_stock` and `retrieve_customer_history`.
+- Unit and integration tests for migrations, seeds, stock rules and tool contracts.
+- Docker persistent SQLite volume and database commands.
+
+### Changed
+
+- Product model now records recommended commercial channels in addition to markets.
+- Project status reflects the approved Qwen live spike.
+
 ## 0.1.0 — 2026-07-10
 
 ### Added
@@ -16,7 +33,6 @@
 
 ### Not completed
 
-- Live Qwen Cloud spike: requires a user-provided API key.
 - Domain model and persistence.
 - Commercial tools and orchestrator.
 - Web application.
