@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     app_version: str = Field(default="0.1.0", alias="APP_VERSION")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
+    database_url: str = Field(
+        default="sqlite:///./data/adegaflow.db",
+        alias="DATABASE_URL",
+    )
+    demo_seed_path: str = Field(
+        default="data/seeds/demo_seed.json",
+        alias="DEMO_SEED_PATH",
+    )
+
     dashscope_api_key: SecretStr | None = Field(default=None, alias="DASHSCOPE_API_KEY")
     qwen_base_url: str = Field(
         default="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
