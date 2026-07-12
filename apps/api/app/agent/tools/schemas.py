@@ -3,7 +3,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.domain.enums import MemoryCategory
 from app.domain.schemas import (
@@ -14,7 +20,13 @@ from app.domain.schemas import (
 )
 
 
-class SearchCatalogInput(BaseModel):
+class StrictToolInput(BaseModel):
+    """Reject undeclared arguments before a tool can execute."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class SearchCatalogInput(StrictToolInput):
     query: str = Field(min_length=1, max_length=200)
     market: str | None = Field(default=None, min_length=2, max_length=2)
     channel: str | None = Field(default=None, min_length=1, max_length=80)
@@ -26,17 +38,25 @@ class SearchCatalogInput(BaseModel):
     def strip_query(cls, value: str) -> str:
         stripped = value.strip()
         if not stripped:
-            raise ValueError("query must contain non-whitespace characters")
+            raise ValueError(
+                "query must contain non-whitespace characters"
+            )
         return stripped
 
     @field_validator("market")
     @classmethod
-    def normalize_market(cls, value: str | None) -> str | None:
+    def normalize_market(
+        cls,
+        value: str | None,
+    ) -> str | None:
         return value.upper() if value else None
 
     @field_validator("channel")
     @classmethod
-    def normalize_channel(cls, value: str | None) -> str | None:
+    def normalize_channel(
+        cls,
+        value: str | None,
+    ) -> str | None:
         return value.strip().casefold() if value else None
 
 
@@ -54,12 +74,18 @@ class SearchCatalogData(BaseModel):
     count: int = Field(ge=0)
 
 
-class ProductDetailsInput(BaseModel):
-    product_ids: Annotated[list[UUID], Field(min_length=1, max_length=20)]
+class ProductDetailsInput(StrictToolInput):
+    product_ids: Annotated[
+        list[UUID],
+        Field(min_length=1, max_length=20),
+    ]
 
     @field_validator("product_ids")
     @classmethod
-    def unique_product_ids(cls, values: list[UUID]) -> list[UUID]:
+    def unique_product_ids(
+        cls,
+        values: list[UUID],
+    ) -> list[UUID]:
         return list(dict.fromkeys(values))
 
 
@@ -68,19 +94,24 @@ class ProductDetailsData(BaseModel):
     missing_product_ids: list[str]
 
 
-class StockItemInput(BaseModel):
+class StockItemInput(StrictToolInput):
     product_id: UUID
     requested_bottles: int = Field(gt=0, le=1_000_000)
 
 
-class CheckStockInput(BaseModel):
-    items: Annotated[list[StockItemInput], Field(min_length=1, max_length=20)]
+class CheckStockInput(StrictToolInput):
+    items: Annotated[
+        list[StockItemInput],
+        Field(min_length=1, max_length=20),
+    ]
 
     @model_validator(mode="after")
     def reject_duplicate_products(self) -> "CheckStockInput":
         product_ids = [item.product_id for item in self.items]
         if len(product_ids) != len(set(product_ids)):
-            raise ValueError("items must not contain duplicate product_id values")
+            raise ValueError(
+                "items must not contain duplicate product_id values"
+            )
         return self
 
 
@@ -96,7 +127,7 @@ class CheckStockData(BaseModel):
     items: list[StockItemResult]
 
 
-class RetrieveCustomerHistoryInput(BaseModel):
+class RetrieveCustomerHistoryInput(StrictToolInput):
     customer_id: UUID
     categories: list[MemoryCategory] | None = None
     limit: int = Field(default=20, ge=1, le=100)
