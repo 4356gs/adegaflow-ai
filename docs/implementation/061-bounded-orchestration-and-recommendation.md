@@ -4,10 +4,44 @@
 
 - **Sprint:** 2 — Núcleo funcional
 - **Bloque:** 5
-- **Estado:** Ready for implementation
-- **Rama:** `feat/sprint2-bounded-orchestration-recommendation`
-- **Baseline:** `18b95f9`
-- **Fecha:** 2026-07-12
+- **Estado:** Complete
+- **Rama de implementación:** `feat/sprint2-bounded-orchestration-recommendation`
+- **Baseline de inicio:** `18b95f9`
+- **PR:** `#3`
+- **Merge commit:** `1b94b4c`
+- **Fecha de cierre:** 2026-07-13
+
+## Resultado de implementación
+
+El Bloque 5 fue implementado y fusionado mediante la PR #3.
+
+Verificación ejecutada sobre `main` en el merge commit `1b94b4c`:
+
+| Comprobación | Resultado |
+|---|---|
+| Ruff | Passed |
+| mypy strict | Passed, 39 source files |
+| pytest sin tests live de Qwen | Passed, 60 tests |
+| Working tree | Clean |
+| API CI de la PR #3 | Passed |
+| Capacidades excluidas | No implementadas |
+
+La ejecución local emitió una `StarletteDeprecationWarning` procedente de
+`fastapi.testclient`. La advertencia no afecta el resultado de los tests y su
+resolución queda fuera de este cierre documental.
+
+El bloque entregó:
+
+- estado persistente de agent runs;
+- tool registry cerrado y tipado;
+- ciclo de tool calling acotado;
+- recomendación estructurada de productos;
+- validación determinista;
+- trazabilidad mediante events y tool executions;
+- finalización controlada como `completed`, `needs_review` o `failed`.
+
+No se implementaron cotizaciones, propuestas, correo, CRM, follow-up, API,
+frontend ni reserva de inventario.
 
 ## Objetivo
 

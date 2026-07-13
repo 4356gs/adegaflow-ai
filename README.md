@@ -12,7 +12,8 @@ Autonomous commercial opportunity agent for Galician wineries, built for the Qwe
 - Sprint 2 Block 2 — SQLite persistence and reproducible seeds: **implemented**
 - Sprint 2 Block 3 — Read tools: **implemented**
 - Sprint 2 Block 4 — Structured inquiry analysis: **implemented**
-- Next block — Bounded orchestration and recommendation
+- Sprint 2 Block 5 — Bounded orchestration and recommendation: **implemented**
+- Next block — Quote and artifact generation documentation
 
 The frontend remains intentionally deferred until the backend contract and critical acceptance scenarios are stable.
 
@@ -45,7 +46,7 @@ Open:
 - API health: `http://localhost:8000/health`
 - OpenAPI: `http://localhost:8000/docs`
 
-The read tools and structured inquiry-analysis service are currently application services. HTTP endpoints and the bounded tool registry enter in later Sprint 2 blocks.
+The read tools, structured inquiry-analysis service and bounded recommendation orchestrator are currently application services. HTTP endpoints remain deferred to Sprint 2 Block 8.
 
 ## Database operations
 
