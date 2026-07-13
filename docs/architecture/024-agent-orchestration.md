@@ -47,7 +47,8 @@ stateDiagram-v2
     CHECKING_STOCK --> VALIDATING_RECOMMENDATION
     VALIDATING_RECOMMENDATION --> CALCULATING_QUOTE
     CALCULATING_QUOTE --> GENERATING_ARTIFACTS
-    GENERATING_ARTIFACTS --> PERSISTING_ACTIONS
+    GENERATING_ARTIFACTS --> NEEDS_REVIEW : Block 6 boundary
+    GENERATING_ARTIFACTS --> PERSISTING_ACTIONS : Block 7 continuation
     PERSISTING_ACTIONS --> NEEDS_REVIEW
     NEEDS_REVIEW --> COMPLETED
 
@@ -61,7 +62,13 @@ stateDiagram-v2
     PERSISTING_ACTIONS --> FAILED
 ```
 
-Sprint 2 Bloque 5 finaliza en `completed`, `needs_review` o `failed` después de la validación de la recomendación. No continúa todavía a cotización, artefactos o acciones internas.
+Sprint 2 Bloque 5 finaliza en `completed`, `needs_review` o `failed`
+después de la validación de la recomendación.
+
+Sprint 2 Bloque 6 extiende los nuevos runs desde una recomendación válida hacia
+`calculating_quote` y `generating_artifacts`. El camino feliz termina
+`needs_review` porque la propuesta y el correo requieren revisión humana. Las
+acciones internas permanecen fuera de este bloque.
 
 ## Flujo detallado
 
@@ -316,18 +323,34 @@ Las tools de lectura no modifican catálogo, inventario ni memoria.
 
 ### 12. Cotización
 
-`calculate_quote` calcula importes. El modelo no realiza aritmética monetaria vinculante.
+`calculate_quote` es una capacidad determinista invocada por el orquestador
+después de validar la recomendación. No se expone a Qwen dentro del tool
+registry.
 
-Esta fase queda fuera del Sprint 2 Bloque 5.
+La aplicación calcula con enteros en céntimos:
+
+```text
+line_total_cents = quantity_bottles * unit_price_cents
+subtotal_cents = sum(line_total_cents)
+cases = quantity_bottles // units_per_case
+quantity_bottles % units_per_case = 0
+```
+
+La fuente de precios es el snapshot de la recomendación validada. Solo se admite
+EUR. No se calculan impuestos, transporte, seguros, aranceles, descuentos,
+margen ni conversiones. La cotización no reserva stock y se persiste como
+`draft`.
 
 ### 13. Artefactos
 
-- `generate_proposal` produce una estructura de propuesta;
-- Qwen redacta la narrativa usando únicamente datos verificados;
-- `draft_email` prepara la respuesta en el idioma detectado;
-- ambos quedan en estado `needs_review`.
-
-Esta fase queda fuera del Sprint 2 Bloque 5.
+- `proposal_writer.v1` genera únicamente narrativa estructurada;
+- `email_writer.v1` genera únicamente narrativa estructurada;
+- el backend ensambla productos, cantidades, precios, subtotal, moneda,
+  supuestos y exclusiones;
+- ambos artefactos se persisten con `review_status=needs_review`;
+- cada prompt permite un intento inicial y una reparación controlada;
+- no existen tool calls durante la redacción;
+- no existe envío real, PDF ni aprobación automática.
 
 ### 14. Acciones internas
 
@@ -360,7 +383,7 @@ No existe tool de envío real.
 | Clase | Ejemplos | Ejecución |
 |---|---|---|
 | Lectura | catálogo, stock, historial | Modelo o fase determinista |
-| Cálculo | cotización | Orquestador o modelo, siempre validada |
+| Cálculo | cotización | Orquestador determinista; nunca Qwen |
 | Escritura interna | CRM, seguimiento, memoria | Orquestador tras validación |
 | Acción externa | enviar email, reservar stock | No disponible en MVP |
 
@@ -378,6 +401,19 @@ No existe tool de envío real.
 | Qwen no disponible definitivamente | failed |
 | Error de persistencia | failed |
 | Error inesperado | failed |
+
+## Estados terminales del Bloque 6
+
+| Condición | Estado |
+|---|---|
+| Cotización y ambos artefactos persistidos | needs_review |
+| Cotización válida y artefacto parcial | needs_review |
+| Moneda distinta de EUR | needs_review |
+| Presupuesto EUR excedido | needs_review con warning |
+| Qwen no disponible después de cotizar | needs_review |
+| Recomendación ausente o inválida | failed |
+| Inconsistencia aritmética | failed |
+| Error de persistencia | failed |
 
 ## Fallbacks
 
