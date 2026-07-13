@@ -11,7 +11,7 @@ apps/api/app/ai/prompts/
 ├── system_policy.v1.md
 ├── inquiry_analysis.v1.md
 ├── tool_selection.v1.md
-├── recommendation.v1.md
+├── product_recommendation.v1.md
 ├── proposal_writer.v1.md
 └── email_writer.v1.md
 ```
@@ -42,7 +42,7 @@ apps/api/app/ai/prompts/
 - criterios de parada;
 - restricciones de uso.
 
-### `recommendation`
+### `product_recommendation`
 
 - contexto del comprador;
 - productos y stock verificados;
@@ -64,6 +64,16 @@ apps/api/app/ai/prompts/
 - preguntas faltantes;
 - llamada a la acción;
 - prohibición de afirmar envío o aprobación.
+
+## Política de artefactos del Bloque 6
+
+- Qwen genera narrativa, no importes vinculantes;
+- el backend ensambla productos, cantidades, precios, subtotal y moneda;
+- `proposal_writer.v1` y `email_writer.v1` usan schemas Pydantic distintos;
+- cada prompt permite un intento inicial y una reparación;
+- no se utilizan tools durante la redacción;
+- ambos artefactos quedan `needs_review`;
+- no se afirma envío, aprobación ni reserva de stock.
 
 ## Formato
 

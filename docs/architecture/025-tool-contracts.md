@@ -1,4 +1,4 @@
-# Contratos de herramientas
+# Contratos de herramientas y capacidades
 
 ## Convención común
 
@@ -44,6 +44,10 @@ En error:
 - precios en céntimos;
 - fechas en ISO 8601;
 - no se incluyen secretos en logs.
+
+Las capacidades del Bloque 6 no se incorporan al tool registry expuesto a Qwen.
+`calculate_quote` es determinista y `generate_proposal`/`draft_email` son
+servicios de aplicación con prompts estructurados.
 
 ---
 
@@ -122,23 +126,47 @@ Ficha completa de cada producto, sin datos de inventario.
 
 ## `calculate_quote` — P0
 
+Capacidad interna determinista; no seleccionable por Qwen.
+
 ### Entrada
 
 ```json
 {
-  "currency": "EUR",
-  "items": [
-    {
-      "product_id": "uuid-1",
-      "quantity_bottles": 300
-    }
-  ]
+  "agent_run_id": "uuid"
 }
 ```
 
 ### Salida
 
-Importes por línea, subtotal, cajas, unidades sobrantes y supuestos. No calcula impuestos, transporte ni aduanas.
+```json
+{
+  "quote_id": "uuid",
+  "agent_run_id": "uuid",
+  "currency": "EUR",
+  "items": [
+    {
+      "product_id": "uuid-1",
+      "quantity_bottles": 300,
+      "unit_price_cents": 1400,
+      "line_total_cents": 420000,
+      "cases": 50
+    }
+  ],
+  "subtotal_cents": 420000,
+  "assumptions": [
+    "taxes_excluded",
+    "shipping_excluded",
+    "duties_excluded",
+    "stock_not_reserved"
+  ],
+  "status": "draft"
+}
+```
+
+Los productos, cantidades, precios y unidades por caja proceden de la
+recomendación validada. Las cantidades deben ser divisibles por caja, de acuerdo
+con la validación del Bloque 5. No calcula impuestos, transporte, seguros,
+aranceles, descuentos, margen ni conversiones.
 
 ---
 
@@ -236,11 +264,13 @@ Permite cambiar etapa, prioridad o resumen. No es necesaria para el camino feliz
 
 ## `generate_proposal` — P0
 
+Servicio de aplicación con salida estructurada; no seleccionable por Qwen.
+
 ### Entrada
 
 ```json
 {
-  "opportunity_id": "uuid",
+  "agent_run_id": "uuid",
   "quote_id": "uuid",
   "language": "en",
   "include_assumptions": true
@@ -249,18 +279,26 @@ Permite cambiar etapa, prioridad o resumen. No es necesaria para el camino feliz
 
 ### Salida
 
-Estructura de propuesta con cabecera, comprador, productos, precios, supuestos, próximos pasos y advertencias. La salida podrá renderizarse como HTML; PDF es P1.
+Artefacto versionado con narrativa validada y secciones comerciales ensambladas
+por el backend. Incluye comprador conocido, productos, cantidades, precios,
+subtotal, supuestos, exclusiones, próximos pasos y advertencias.
+
+Se persiste con `review_status=needs_review`. HTML final y PDF quedan fuera del
+Bloque 6.
 
 ---
 
 ## `draft_email` — P0
 
+Servicio de aplicación con salida estructurada; no seleccionable por Qwen.
+
 ### Entrada
 
 ```json
 {
-  "opportunity_id": "uuid",
-  "proposal_id": "uuid",
+  "agent_run_id": "uuid",
+  "quote_id": "uuid",
+  "proposal_artifact_id": "uuid",
   "language": "en",
   "tone": "professional_concise"
 }
@@ -268,7 +306,11 @@ Estructura de propuesta con cabecera, comprador, productos, precios, supuestos, 
 
 ### Salida
 
-Asunto, cuerpo, preguntas de clarificación y estado `needs_review`.
+Asunto, secciones de cuerpo, resumen comercial determinista, preguntas de
+clarificación, llamada a la acción, advertencias y estado `needs_review`.
+
+No envía correo ni afirma aprobación, reserva de stock o inclusión de conceptos
+excluidos.
 
 ---
 

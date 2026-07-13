@@ -12,12 +12,13 @@ erDiagram
     CUSTOMER ||--o{ INQUIRY : sends
     INQUIRY ||--o| OPPORTUNITY : creates
     INQUIRY ||--o{ AGENT_RUN : processed_by
-    OPPORTUNITY ||--o{ QUOTE : has
+    AGENT_RUN ||--o| QUOTE : produces
     QUOTE ||--|{ QUOTE_ITEM : contains
     PRODUCT ||--o{ QUOTE_ITEM : referenced_by
     PRODUCT ||--|| INVENTORY : has
+    AGENT_RUN ||--o{ GENERATED_ARTIFACT : produces
+    QUOTE ||--o{ GENERATED_ARTIFACT : informs
     OPPORTUNITY ||--o{ FOLLOW_UP_TASK : has
-    OPPORTUNITY ||--o{ GENERATED_ARTIFACT : produces
     AGENT_RUN ||--o{ TOOL_EXECUTION : records
     AGENT_RUN ||--o{ AGENT_RUN_EVENT : emits
 ```
@@ -129,12 +130,17 @@ La tabla existe para bloques posteriores. Sprint 2 Bloque 5 no crea ni actualiza
 | Campo | Tipo | Regla |
 |---|---|---|
 | id | UUID | PK |
-| opportunity_id | UUID | FK |
+| agent_run_id | UUID | FK obligatorio, único |
 | currency | string | EUR |
 | subtotal_cents | integer | calculado |
 | status | enum | draft, reviewed |
-| assumptions | JSON | visible en la propuesta |
+| assumptions | JSON | versionado y visible |
 | created_at | datetime | UTC |
+
+La inquiry se obtiene mediante `agent_run.inquiry_id`; no se duplican
+`inquiry_id` ni `opportunity_id` en la cotización. Cuando el Bloque 7 cree una
+oportunidad, la relación se resolverá mediante `opportunities.inquiry_id`, que
+es único. El Bloque 6 crea como máximo una cotización por run.
 
 ### `quote_items`
 
@@ -146,7 +152,13 @@ La tabla existe para bloques posteriores. Sprint 2 Bloque 5 no crea ni actualiza
 | quantity_bottles | integer | > 0 |
 | unit_price_cents | integer | snapshot |
 | line_total_cents | integer | calculado |
-| cases | integer | derivado o explícito |
+| cases | integer | derivado; cantidad divisible por caja |
+
+Restricción:
+
+```text
+unique(quote_id, product_id)
+```
 
 ### `follow_up_tasks`
 
@@ -164,12 +176,20 @@ La tabla existe para bloques posteriores. Sprint 2 Bloque 5 no crea ni actualiza
 | Campo | Tipo | Regla |
 |---|---|---|
 | id | UUID | PK |
-| opportunity_id | UUID | FK |
+| agent_run_id | UUID | FK obligatorio |
+| quote_id | UUID | FK obligatorio |
 | artifact_type | enum | proposal, email_draft |
 | language | string | ISO 639-1 |
-| content | JSON/text | versionado |
+| schema_version | string | obligatorio |
+| content | JSON | versionado |
 | review_status | enum | needs_review, approved |
 | created_at | datetime | UTC |
+
+Restricción:
+
+```text
+unique(agent_run_id, artifact_type)
+```
 
 ### `agent_runs`
 
@@ -192,7 +212,7 @@ Una inquiry puede tener múltiples runs. Esto permite reintentos y conserva el h
 
 `status` representa el estado global. `current_step` representa la fase funcional activa.
 
-Pasos previstos para el Bloque 5:
+Pasos implementados hasta el Bloque 5:
 
 - queued;
 - analyzing;
@@ -204,7 +224,14 @@ Pasos previstos para el Bloque 5:
 - needs_review;
 - failed.
 
-`result_payload` puede contener la recomendación validada o un resultado parcial seguro. No contiene una cotización ni importes totales.
+El Bloque 6 añade:
+
+- calculating_quote;
+- generating_artifacts.
+
+`result_payload` conserva la recomendación validada y puede añadir referencias
+resumidas a la cotización y los artefactos. El contenido completo permanece en
+sus tablas correspondientes.
 
 ### `tool_executions`
 
@@ -280,7 +307,8 @@ La recomendación se persiste en `agent_runs.result_payload` porque:
 
 - todavía no posee un ciclo de vida independiente;
 - no existe API de recomendaciones;
-- no se cotiza ni se reserva inventario;
+- la cotización posee un ciclo de vida separado y no modifica la recomendación;
+- no se reserva inventario;
 - crear un agregado adicional aumentaría el alcance sin valor inmediato.
 
 La recomendación validada conserva:
