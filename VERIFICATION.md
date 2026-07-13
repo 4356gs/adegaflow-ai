@@ -1,6 +1,6 @@
 # Verification Report
 
-Date: 2026-07-12
+Date: 2026-07-13
 
 ## Qwen Cloud gate
 
@@ -38,12 +38,29 @@ The Block 4 implementation was validated in an isolated reconstruction before ha
 | Provider timeout failure state | Passed |
 | Packaged versioned prompt | Passed |
 
-## Required target-repository verification
+## Bounded orchestration and recommendation — Block 5
 
-Run in WSL after applying Block 4:
+Block 5 was verified on `main` after merging PR #3.
+
+| Check | Result |
+|---|---|
+| Merge commit | `1b94b4c` |
+| Ruff | Passed |
+| mypy strict | Passed, 39 source files |
+| pytest excluding live Qwen | Passed, 60 tests |
+| API CI | Passed |
+| Working tree | Clean |
+| Quotes, CRM, follow-up, API and frontend | Not implemented |
+
+One non-blocking `StarletteDeprecationWarning` was emitted by the test-client
+dependency. No dependency changes were introduced as part of the Block 5
+closeout.
+
+## Current target-repository verification
 
 ```bash
 make check-api
 ```
 
-The branch must not be pushed or merged unless the combined repository checks pass. Docker behavior is unchanged by this block.
+The latest combined verification on `main` passed. Docker behavior was not
+changed by Block 5.
