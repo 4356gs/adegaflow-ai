@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Never, Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
@@ -13,13 +13,24 @@ from sqlalchemy.orm import Session
 
 from app.agent.registry import RegistryExecutionResult, ToolRegistry
 from app.ai.prompts import (
+    EMAIL_WRITER_PROMPT_VERSION,
     INQUIRY_ANALYSIS_PROMPT_VERSION,
     PRODUCT_RECOMMENDATION_PROMPT_VERSION,
+    PROPOSAL_WRITER_PROMPT_VERSION,
+    load_email_writer_prompt,
     load_product_recommendation_prompt,
+    load_proposal_writer_prompt,
 )
+from app.ai.qwen_client import QwenClientError
 from app.ai.schemas import ModelTurn, ToolCall
-from app.db.models import AgentRun, Inquiry
+from app.db.models import AgentRun, Customer, Inquiry
 from app.domain.analysis import InquiryAnalysis
+from app.domain.artifacts import (
+    ALLOWED_EMAIL_NEXT_STEPS,
+    ALLOWED_PROPOSAL_NEXT_STEPS,
+    EmailDraftNarrative,
+    ProposalNarrative,
+)
 from app.domain.enums import AgentRunStatus, AgentRunStep
 from app.domain.recommendation import (
     RecommendationContext,
@@ -30,9 +41,17 @@ from app.domain.recommendation import (
 )
 from app.domain.schemas import ProductRecord
 from app.repositories.agent_runs import AgentRunRepository
+from app.services.artifact_persistence import (
+    ArtifactPersistenceError,
+    ArtifactPersistenceService,
+)
 from app.services.inquiry_analysis import (
     InquiryAnalysisError,
     InquiryAnalysisService,
+)
+from app.services.quote_calculation import (
+    QuoteCalculationError,
+    QuoteCalculationService,
 )
 from app.services.recommendation_validation import (
     RecommendationValidationService,
@@ -40,6 +59,16 @@ from app.services.recommendation_validation import (
 
 Message = dict[str, Any]
 ToolDefinition = dict[str, Any]
+
+HUMAN_REVIEW_REQUIRED_CODE = "HUMAN_REVIEW_REQUIRED"
+HUMAN_REVIEW_REQUIRED_MESSAGE = "The generated commercial artifacts require human review."
+PROPOSAL_INVALID_RESPONSE_CODE = "PROPOSAL_INVALID_RESPONSE"
+EMAIL_DRAFT_INVALID_RESPONSE_CODE = "EMAIL_DRAFT_INVALID_RESPONSE"
+NARRATIVE_COMMERCIAL_PROHIBITION = (
+    "Do not invent, calculate, quote or restate prices, totals, discounts "
+    "or commercial terms. Use only narrative supported by the supplied "
+    "context."
+)
 
 
 class RecommendationModelClient(Protocol):
@@ -178,6 +207,8 @@ class BoundedRecommendationOrchestrator:
                 "product_recommendation": (
                     PRODUCT_RECOMMENDATION_PROMPT_VERSION
                 ),
+                "proposal_writer": PROPOSAL_WRITER_PROMPT_VERSION,
+                "email_writer": EMAIL_WRITER_PROMPT_VERSION,
             },
         )
         self.run_repository.append_event(
@@ -245,7 +276,12 @@ class BoundedRecommendationOrchestrator:
                 evidence=evidence.snapshot(),
             )
             if outcome.valid:
-                return self._complete(run_id, outcome)
+                return self._complete(
+                    run_id,
+                    outcome,
+                    analysis=analysis,
+                    missing_fields=missing_fields,
+                )
 
             if unknown_tool_seen:
                 return self._needs_review(
@@ -285,7 +321,12 @@ class BoundedRecommendationOrchestrator:
                     evidence=evidence.snapshot(),
                 )
                 if corrected_outcome.valid:
-                    return self._complete(run_id, corrected_outcome)
+                    return self._complete(
+                        run_id,
+                        corrected_outcome,
+                        analysis=analysis,
+                        missing_fields=missing_fields,
+                    )
                 draft = corrected
                 outcome = corrected_outcome
 
@@ -834,29 +875,388 @@ class BoundedRecommendationOrchestrator:
         self,
         run_id: str,
         outcome: RecommendationValidationOutcome,
+        *,
+        analysis: InquiryAnalysis,
+        missing_fields: list[str],
     ) -> OrchestrationResult:
         if outcome.result is None:
             raise _TerminalFailure(
                 code="UNEXPECTED_ERROR",
                 message="Validated outcome did not contain a result.",
             )
+
+        recommendation = outcome.result
         run = self._require_run(run_id)
-        payload = outcome.result.model_dump(mode="json")
-        self.run_repository.complete_run(
-            run,
-            result_payload=payload,
+        inquiry = self.session.get(Inquiry, run.inquiry_id)
+        if inquiry is None:
+            raise _TerminalFailure(
+                code="INQUIRY_NOT_FOUND",
+                message="The inquiry was removed during orchestration.",
+            )
+        customer = (
+            self.session.get(Customer, inquiry.customer_id)
+            if inquiry.customer_id is not None
+            else None
+        )
+
+        buyer = {
+            "company_name": (
+                customer.company_name if customer is not None else analysis.company_name
+            ),
+            "contact_name": (
+                customer.contact_name
+                if customer is not None and customer.contact_name
+                else analysis.contact_name
+            ),
+            "email": (
+                customer.email
+                if customer is not None and customer.email
+                else analysis.contact_email
+            ),
+            "market": analysis.market,
+            "country_code": (customer.country_code if customer is not None else None),
+        }
+        language = self._artifact_language(
+            inquiry_language=inquiry.detected_language,
+            customer_language=(customer.preferred_language if customer is not None else None),
+        )
+        official_products = [
+            {
+                "product_id": str(item.product_id),
+                "name": item.name,
+                "rationale": item.rationale,
+            }
+            for item in recommendation.items
+        ]
+        exclusions = [
+            "taxes",
+            "transport",
+            "insurance",
+            "duties_and_customs",
+            "discounts",
+            "stock_reservation",
+        ]
+        assumptions = [
+            "Products and quantities come from the validated recommendation.",
+            "The draft requires human review before commercial use.",
+        ]
+        proposal_context = {
+            "target_language": language,
+            "buyer": buyer,
+            "market": analysis.market,
+            "channel": analysis.channel,
+            "recommendation_summary": recommendation.summary,
+            "official_products": official_products,
+            "missing_fields": list(missing_fields),
+            "assumptions": assumptions,
+            "exclusions": exclusions,
+            "allowed_next_steps": list(ALLOWED_PROPOSAL_NEXT_STEPS),
+            "prohibited_content": NARRATIVE_COMMERCIAL_PROHIBITION,
+        }
+        recommendation_payload = recommendation.model_dump(mode="json")
+        result_payload = self._commercial_result_payload(
+            recommendation=recommendation_payload,
+        )
+        run.result_payload = dict(result_payload)
+        self.run_repository.append_event(
+            run=run,
+            event_type="quote_calculation_started",
+            step=AgentRunStep.CALCULATING_QUOTE,
+            payload={
+                "item_count": len(recommendation.items),
+            },
+        )
+        self.run_repository.set_step(run, AgentRunStep.CALCULATING_QUOTE)
+        self.session.commit()
+
+        try:
+            quote_result = QuoteCalculationService(self.session).calculate(run_id)
+        except QuoteCalculationError as exc:
+            self._raise_service_error(exc, payload=result_payload)
+
+        calculated_quote = quote_result.calculated_quote
+        quote_reference = {
+            "quote_id": quote_result.quote.id,
+            "currency": quote_result.quote.currency,
+            "subtotal_cents": quote_result.quote.subtotal_cents,
+            "status": quote_result.quote.status,
+        }
+        quote_id = quote_result.quote.id
+        quote_created = quote_result.created
+        quote_event_payload = {
+            "currency": calculated_quote.currency,
+            "subtotal_cents": calculated_quote.subtotal_cents,
+            "item_count": len(calculated_quote.items),
+            "warning_count": len(calculated_quote.warnings),
+            "warnings": list(calculated_quote.warnings),
+            "budget_exceeded": calculated_quote.budget_exceeded,
+        }
+        quote_persisted_payload = {
+            "quote_id": quote_id,
+            "status": quote_reference["status"],
+            "created": quote_created,
+        }
+        result_payload = self._commercial_result_payload(
+            recommendation=recommendation_payload,
+            quote=quote_reference,
+        )
+
+        run = self._require_run(run_id)
+        run.result_payload = dict(result_payload)
+        self.run_repository.append_event(
+            run=run,
+            event_type="quote_calculated",
+            step=AgentRunStep.CALCULATING_QUOTE,
+            payload=quote_event_payload,
         )
         self.run_repository.append_event(
             run=run,
-            event_type="run_completed",
-            step=AgentRunStep.COMPLETED,
+            event_type="quote_persisted",
+            step=AgentRunStep.CALCULATING_QUOTE,
+            payload=quote_persisted_payload,
+        )
+        self.session.commit()
+
+        run = self._require_run(run_id)
+        self.run_repository.set_step(
+            run,
+            AgentRunStep.GENERATING_ARTIFACTS,
+        )
+        self.run_repository.append_event(
+            run=run,
+            event_type="proposal_generation_started",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
             payload={
-                "total_bottles": outcome.result.total_bottles,
-                "item_count": len(outcome.result.items),
+                "prompt_version": PROPOSAL_WRITER_PROMPT_VERSION,
+                "quote_id": quote_id,
+            },
+        )
+        proposal_messages = self._narrative_messages(
+            prompt=load_proposal_writer_prompt(),
+            context=proposal_context,
+        )
+        self.session.commit()
+
+        try:
+            proposal_payload, proposal_turn = self.client.complete_json(
+                proposal_messages,
+                schema=ProposalNarrative,
+                model=self.model,
+                temperature=0.2,
+            )
+            proposal_narrative = ProposalNarrative.model_validate(
+                proposal_payload
+            )
+        except QwenClientError as exc:
+            return self._narrative_partial_review(
+                run_id=run_id,
+                rejected_event_type="proposal_rejected",
+                stage="proposal",
+                code=exc.info.code,
+                message=exc.info.message,
+                payload=result_payload,
+            )
+        except ValidationError:
+            return self._narrative_partial_review(
+                run_id=run_id,
+                rejected_event_type="proposal_rejected",
+                stage="proposal",
+                code=PROPOSAL_INVALID_RESPONSE_CODE,
+                message=(
+                    "The proposal narrative did not match its schema."
+                ),
+                payload=result_payload,
+            )
+
+        proposal_received_payload = self._narrative_turn_payload(
+            turn=proposal_turn,
+            prompt_version=PROPOSAL_WRITER_PROMPT_VERSION,
+            schema_version=proposal_narrative.schema_version,
+            structured_item_count=len(
+                proposal_narrative.product_positioning
+            ),
+            warnings=proposal_narrative.warnings,
+        )
+        run = self._require_run(run_id)
+        self.run_repository.append_event(
+            run=run,
+            event_type="proposal_received",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload=proposal_received_payload,
+        )
+        self.session.commit()
+
+        try:
+            proposal_result = ArtifactPersistenceService(self.session).persist_proposal(
+                agent_run_id=run_id,
+                quote_id=quote_id,
+                narrative=proposal_narrative,
+            )
+        except ArtifactPersistenceError as exc:
+            return self._artifact_persistence_terminal(
+                run_id=run_id,
+                stage="proposal_persistence",
+                exc=exc,
+                payload=result_payload,
+            )
+
+        proposal_reference = {
+            "artifact_id": proposal_result.artifact.id,
+            "artifact_type": proposal_result.artifact.artifact_type,
+            "review_status": proposal_result.artifact.review_status,
+        }
+        proposal_artifact_id = proposal_result.artifact.id
+        proposal_created = proposal_result.created
+        proposal_persisted_payload = {
+            "artifact_id": proposal_artifact_id,
+            "quote_id": quote_id,
+            "review_status": proposal_reference["review_status"],
+            "created": proposal_created,
+        }
+        result_payload = self._commercial_result_payload(
+            recommendation=recommendation_payload,
+            quote=quote_reference,
+            artifacts=(proposal_reference,),
+        )
+        email_context = {
+            "target_language": language,
+            "buyer": buyer,
+            "market": analysis.market,
+            "channel": analysis.channel,
+            "recommendation_summary": recommendation.summary,
+            "official_products": official_products,
+            "missing_fields": list(missing_fields),
+            "assumptions": assumptions,
+            "exclusions": exclusions,
+            "allowed_next_step": ALLOWED_EMAIL_NEXT_STEPS[0],
+            "proposal_artifact_id": proposal_artifact_id,
+            "prohibited_content": NARRATIVE_COMMERCIAL_PROHIBITION,
+        }
+        email_messages = self._narrative_messages(
+            prompt=load_email_writer_prompt(),
+            context=email_context,
+        )
+
+        run = self._require_run(run_id)
+        run.result_payload = dict(result_payload)
+        self.run_repository.append_event(
+            run=run,
+            event_type="proposal_persisted",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload=proposal_persisted_payload,
+        )
+        self.session.commit()
+
+        run = self._require_run(run_id)
+        self.run_repository.append_event(
+            run=run,
+            event_type="email_generation_started",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload={
+                "prompt_version": EMAIL_WRITER_PROMPT_VERSION,
+                "proposal_artifact_id": proposal_artifact_id,
             },
         )
         self.session.commit()
-        return self._result(run)
+
+        try:
+            email_payload, email_turn = self.client.complete_json(
+                email_messages,
+                schema=EmailDraftNarrative,
+                model=self.model,
+                temperature=0.2,
+            )
+            email_narrative = EmailDraftNarrative.model_validate(
+                email_payload
+            )
+        except QwenClientError as exc:
+            return self._narrative_partial_review(
+                run_id=run_id,
+                rejected_event_type="email_draft_rejected",
+                stage="email_draft",
+                code=exc.info.code,
+                message=exc.info.message,
+                payload=result_payload,
+            )
+        except ValidationError:
+            return self._narrative_partial_review(
+                run_id=run_id,
+                rejected_event_type="email_draft_rejected",
+                stage="email_draft",
+                code=EMAIL_DRAFT_INVALID_RESPONSE_CODE,
+                message=(
+                    "The email draft narrative did not match its schema."
+                ),
+                payload=result_payload,
+            )
+
+        email_received_payload = self._narrative_turn_payload(
+            turn=email_turn,
+            prompt_version=EMAIL_WRITER_PROMPT_VERSION,
+            schema_version=email_narrative.schema_version,
+            structured_item_count=len(email_narrative.questions),
+            warnings=email_narrative.warnings,
+        )
+        run = self._require_run(run_id)
+        self.run_repository.append_event(
+            run=run,
+            event_type="email_draft_received",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload=email_received_payload,
+        )
+        self.session.commit()
+
+        try:
+            email_result = ArtifactPersistenceService(self.session).persist_email_draft(
+                agent_run_id=run_id,
+                quote_id=quote_id,
+                proposal_artifact_id=proposal_artifact_id,
+                narrative=email_narrative,
+            )
+        except ArtifactPersistenceError as exc:
+            return self._artifact_persistence_terminal(
+                run_id=run_id,
+                stage="email_draft_persistence",
+                exc=exc,
+                payload=result_payload,
+            )
+
+        email_reference = {
+            "artifact_id": email_result.artifact.id,
+            "artifact_type": email_result.artifact.artifact_type,
+            "review_status": email_result.artifact.review_status,
+        }
+        email_artifact_id = email_result.artifact.id
+        email_created = email_result.created
+        email_persisted_payload = {
+            "artifact_id": email_artifact_id,
+            "quote_id": quote_id,
+            "proposal_artifact_id": proposal_artifact_id,
+            "review_status": email_reference["review_status"],
+            "created": email_created,
+        }
+        result_payload = self._commercial_result_payload(
+            recommendation=recommendation_payload,
+            quote=quote_reference,
+            artifacts=(proposal_reference, email_reference),
+        )
+
+        run = self._require_run(run_id)
+        run.result_payload = dict(result_payload)
+        self.run_repository.append_event(
+            run=run,
+            event_type="email_draft_persisted",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload=email_persisted_payload,
+        )
+        self.session.commit()
+
+        return self._needs_review(
+            run_id,
+            code=HUMAN_REVIEW_REQUIRED_CODE,
+            message=HUMAN_REVIEW_REQUIRED_MESSAGE,
+            payload=result_payload,
+        )
 
     def _needs_review(
         self,
@@ -1017,6 +1417,249 @@ class BoundedRecommendationOrchestrator:
                 ),
             },
         ]
+
+    @staticmethod
+    def _narrative_messages(
+        *,
+        prompt: str,
+        context: Mapping[str, object],
+    ) -> list[Message]:
+        return [
+            {
+                "role": "system",
+                "content": (f"{prompt}\n\n{NARRATIVE_COMMERCIAL_PROHIBITION}"),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    dict(context),
+                    ensure_ascii=False,
+                ),
+            },
+        ]
+
+    @staticmethod
+    def _artifact_language(
+        *,
+        inquiry_language: str | None,
+        customer_language: str | None,
+    ) -> str:
+        for candidate in (inquiry_language, customer_language):
+            if candidate is None:
+                continue
+            normalized = candidate.strip().lower()
+            if len(normalized) == 2 and normalized.isascii() and normalized.isalpha():
+                return normalized
+        return "en"
+
+    @staticmethod
+    def _commercial_result_payload(
+        *,
+        recommendation: Mapping[str, object],
+        quote: Mapping[str, object] | None = None,
+        artifacts: Sequence[Mapping[str, object]] = (),
+    ) -> dict[str, object]:
+        result: dict[str, object] = {
+            "recommendation": dict(recommendation),
+            "artifacts": [dict(artifact) for artifact in artifacts],
+        }
+        if quote is not None:
+            result["quote"] = dict(quote)
+        return result
+
+    @classmethod
+    def _copy_commercial_result_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        recommendation = payload.get("recommendation")
+        if not isinstance(recommendation, Mapping):
+            raise _TerminalFailure(
+                code="UNEXPECTED_ERROR",
+                message="The recommendation reference could not be preserved.",
+            )
+        quote_candidate = payload.get("quote")
+        quote = (
+            quote_candidate
+            if isinstance(quote_candidate, Mapping)
+            else None
+        )
+        artifacts_candidate = payload.get("artifacts", [])
+        if not isinstance(artifacts_candidate, list) or not all(
+            isinstance(artifact, Mapping)
+            for artifact in artifacts_candidate
+        ):
+            raise _TerminalFailure(
+                code="UNEXPECTED_ERROR",
+                message="The artifact references could not be preserved.",
+            )
+        return cls._commercial_result_payload(
+            recommendation=recommendation,
+            quote=quote,
+            artifacts=artifacts_candidate,
+        )
+
+    @staticmethod
+    def _narrative_turn_payload(
+        *,
+        turn: ModelTurn,
+        prompt_version: str,
+        schema_version: str,
+        structured_item_count: int,
+        warnings: Sequence[str],
+    ) -> dict[str, object]:
+        return {
+            "prompt_version": prompt_version,
+            "schema_version": schema_version,
+            "model": turn.model,
+            "finish_reason": turn.finish_reason,
+            "structured_item_count": structured_item_count,
+            "warning_count": len(warnings),
+            "warnings": list(warnings),
+            "prompt_tokens": turn.usage.prompt_tokens,
+            "completion_tokens": turn.usage.completion_tokens,
+            "total_tokens": turn.usage.total_tokens,
+        }
+
+    @staticmethod
+    def _partial_event_payload(
+        *,
+        stage: str,
+        code: str,
+        payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        quote = payload.get("quote")
+        quote_id = (
+            quote.get("quote_id")
+            if isinstance(quote, Mapping)
+            else None
+        )
+        artifacts = payload.get("artifacts", [])
+        artifact_references = (
+            [
+                {
+                    "artifact_id": artifact.get("artifact_id"),
+                    "artifact_type": artifact.get("artifact_type"),
+                }
+                for artifact in artifacts
+                if isinstance(artifact, Mapping)
+            ]
+            if isinstance(artifacts, list)
+            else []
+        )
+        return {
+            "stage": stage,
+            "error_code": code,
+            "quote_id": quote_id,
+            "artifacts": artifact_references,
+        }
+
+    def _narrative_partial_review(
+        self,
+        *,
+        run_id: str,
+        rejected_event_type: str,
+        stage: str,
+        code: str,
+        message: str,
+        payload: Mapping[str, object],
+    ) -> OrchestrationResult:
+        safe_payload = self._copy_commercial_result_payload(payload)
+        rejected_payload = {
+            "error_code": code,
+            "message_safe": message,
+        }
+        partial_payload = self._partial_event_payload(
+            stage=stage,
+            code=code,
+            payload=safe_payload,
+        )
+        self.session.rollback()
+        run = self._require_run(run_id)
+        self.run_repository.append_event(
+            run=run,
+            event_type=rejected_event_type,
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload=rejected_payload,
+        )
+        self.run_repository.append_event(
+            run=run,
+            event_type="artifact_generation_partial",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload=partial_payload,
+        )
+        return self._needs_review(
+            run_id,
+            code=code,
+            message=message,
+            payload=safe_payload,
+        )
+
+    def _artifact_persistence_terminal(
+        self,
+        *,
+        run_id: str,
+        stage: str,
+        exc: ArtifactPersistenceError,
+        payload: Mapping[str, object],
+    ) -> OrchestrationResult:
+        code = exc.code
+        message = exc.message
+        needs_review = exc.needs_review
+        safe_payload = self._copy_commercial_result_payload(payload)
+        partial_payload = self._partial_event_payload(
+            stage=stage,
+            code=code,
+            payload=safe_payload,
+        )
+        self.session.rollback()
+        run = self._require_run(run_id)
+        run.result_payload = dict(safe_payload)
+        self.run_repository.append_event(
+            run=run,
+            event_type="artifact_generation_partial",
+            step=AgentRunStep.GENERATING_ARTIFACTS,
+            payload=partial_payload,
+        )
+        if needs_review:
+            return self._needs_review(
+                run_id,
+                code=code,
+                message=message,
+                payload=safe_payload,
+            )
+
+        self.run_repository.fail_run(
+            run,
+            error_code=code,
+            message_safe=message,
+        )
+        self.run_repository.append_event(
+            run=run,
+            event_type="run_failed",
+            step=AgentRunStep.FAILED,
+            payload={"error_code": code},
+        )
+        self.session.commit()
+        return self._result(run)
+
+    def _raise_service_error(
+        self,
+        exc: QuoteCalculationError | ArtifactPersistenceError,
+        *,
+        payload: Mapping[str, object],
+    ) -> Never:
+        self.session.rollback()
+        if exc.needs_review:
+            raise _TerminalReview(
+                code=exc.code,
+                message=exc.message,
+                payload=payload,
+            ) from exc
+        raise _TerminalFailure(
+            code=exc.code,
+            message=exc.message,
+        ) from exc
 
     @staticmethod
     def _review_payload(

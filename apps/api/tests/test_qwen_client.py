@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from app.ai.qwen_client import QwenClient, QwenClientError, QwenNotConfiguredError
 from app.core.config import Settings
+from app.domain.artifacts import EmailDraftNarrative, ProposalNarrative
 from pydantic import BaseModel
 
 
@@ -21,6 +22,22 @@ class FakeCompletions:
 class FakeSdkClient:
     def __init__(self, response: Any) -> None:
         self.completions = FakeCompletions(response)
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+class SequencedCompletions:
+    def __init__(self, responses: list[Any]) -> None:
+        self.responses = list(responses)
+        self.calls: list[dict[str, Any]] = []
+
+    def create(self, **kwargs: Any) -> Any:
+        self.calls.append(kwargs)
+        return self.responses.pop(0)
+
+
+class SequencedSdkClient:
+    def __init__(self, responses: list[Any]) -> None:
+        self.completions = SequencedCompletions(responses)
         self.chat = SimpleNamespace(completions=self.completions)
 
 
@@ -137,3 +154,76 @@ def test_tool_call_is_normalized_and_roundtrip_serializable() -> None:
     assert turn.tool_calls[0].arguments == {"query": "Albariño"}
     assistant_message = turn.as_assistant_message()
     assert assistant_message["tool_calls"][0]["id"] == "call-1"
+
+
+@pytest.mark.parametrize(
+    ("schema", "valid_payload"),
+    [
+        (
+            ProposalNarrative,
+            {
+                "headline": "Proposal",
+                "executive_summary": "Structured proposal narrative.",
+                "product_positioning": [
+                    {
+                        "product_id": "11111111-1111-4111-8111-111111111111",
+                        "positioning": "Fresh Atlantic style.",
+                    }
+                ],
+                "next_steps": [],
+                "open_questions": [],
+                "warnings": ["Human review required."],
+            },
+        ),
+        (
+            EmailDraftNarrative,
+            {
+                "subject": "Draft proposal",
+                "introduction": "Thank you for your inquiry.",
+                "recommendation_summary": "A focused selection.",
+                "next_step": "Please review the proposal.",
+                "questions": [],
+                "closing": "Kind regards",
+                "warnings": ["Human review required."],
+            },
+        ),
+    ],
+)
+def test_narrative_json_is_repaired_once(
+    schema: type[BaseModel],
+    valid_payload: dict[str, object],
+) -> None:
+    fake = SequencedSdkClient(
+        [
+            completion(content='{"unexpected":true}'),
+            completion(content=json.dumps(valid_payload)),
+        ]
+    )
+    client = QwenClient(settings=Settings(), sdk_client=fake)
+
+    payload, _ = client.complete_json(
+        [{"role": "user", "content": "Return narrative JSON."}],
+        schema=schema,
+    )
+
+    assert schema.model_validate(payload)
+    assert len(fake.completions.calls) == 2
+
+
+def test_invalid_narrative_after_repair_is_typed_error() -> None:
+    fake = SequencedSdkClient(
+        [
+            completion(content='{"unexpected":true}'),
+            completion(content='{"still":"invalid"}'),
+        ]
+    )
+    client = QwenClient(settings=Settings(), sdk_client=fake)
+
+    with pytest.raises(QwenClientError) as captured:
+        client.complete_json(
+            [{"role": "user", "content": "Return proposal JSON."}],
+            schema=ProposalNarrative,
+        )
+
+    assert captured.value.info.code == "QWEN_INVALID_RESPONSE"
+    assert len(fake.completions.calls) == 2

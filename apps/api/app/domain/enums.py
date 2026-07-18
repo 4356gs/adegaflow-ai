@@ -50,6 +50,8 @@ class AgentRunStep(StrEnum):
     SELECTING_PRODUCTS = "selecting_products"
     CHECKING_STOCK = "checking_stock"
     VALIDATING_RECOMMENDATION = "validating_recommendation"
+    CALCULATING_QUOTE = "calculating_quote"
+    GENERATING_ARTIFACTS = "generating_artifacts"
     COMPLETED = "completed"
     NEEDS_REVIEW = "needs_review"
     FAILED = "failed"
@@ -60,3 +62,18 @@ class ToolExecutionStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     REJECTED = "rejected"
+
+
+class QuoteStatus(StrEnum):
+    DRAFT = "draft"
+    REVIEWED = "reviewed"
+
+
+class ArtifactType(StrEnum):
+    PROPOSAL = "proposal"
+    EMAIL_DRAFT = "email_draft"
+
+
+class ReviewStatus(StrEnum):
+    NEEDS_REVIEW = "needs_review"
+    APPROVED = "approved"
