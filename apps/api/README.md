@@ -2,7 +2,7 @@
 
 FastAPI backend, Qwen Cloud adapter, SQLite persistence, structured inquiry
 analysis, bounded recommendation orchestration, deterministic EUR quotes and
-reviewable commercial artifacts.
+reviewable commercial artifacts with deterministic internal actions.
 
 ## Requirements
 
@@ -71,10 +71,15 @@ New runs can currently:
 - select and validate products through the closed read-tool registry;
 - calculate and persist one deterministic EUR quote;
 - generate and persist a proposal and email draft;
+- resolve or create the minimum valid customer;
+- persist one deterministically qualified CRM opportunity;
+- create a pending follow-up exactly seven days later;
+- save only explicit, allowed customer-memory facts;
 - finish in `needs_review` with ordered events and summarized references.
 
-CRM opportunity creation, follow-up creation and memory writes remain deferred
-to Sprint 2 Block 7. HTTP orchestration endpoints remain deferred to Block 8.
+The three internal actions use canonical fingerprints and persistent receipts,
+and commit atomically with their audit trail and terminal run state. HTTP
+orchestration endpoints remain deferred to Block 8.
 
 ## Quality
 

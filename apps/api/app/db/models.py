@@ -290,6 +290,30 @@ class Opportunity(Base):
     )
 
 
+class FollowUpTask(Base):
+    __tablename__ = "follow_up_tasks"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'completed')",
+            name="ck_follow_up_tasks_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    opportunity_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("opportunities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
 class AgentRun(Base):
     __tablename__ = "agent_runs"
     __table_args__ = (
@@ -616,4 +640,39 @@ class GeneratedArtifact(Base):
         DateTime(timezone=True),
         nullable=False,
         default=utc_now,
+    )
+
+
+class InternalActionReceipt(Base):
+    __tablename__ = "internal_action_receipts"
+    __table_args__ = (
+        UniqueConstraint(
+            "agent_run_id",
+            "action_name",
+            name="uq_internal_action_receipts_run_action",
+        ),
+        CheckConstraint(
+            "action_name IN ('create_crm_opportunity', "
+            "'create_followup_task', 'save_customer_memory')",
+            name="ck_internal_action_receipts_action_name",
+        ),
+        CheckConstraint(
+            "length(request_fingerprint) = 64",
+            name="ck_internal_action_receipts_fingerprint_length",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    agent_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("agent_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    action_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(160), nullable=False, unique=True)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
     )

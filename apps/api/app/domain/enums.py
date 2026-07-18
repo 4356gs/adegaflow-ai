@@ -52,6 +52,7 @@ class AgentRunStep(StrEnum):
     VALIDATING_RECOMMENDATION = "validating_recommendation"
     CALCULATING_QUOTE = "calculating_quote"
     GENERATING_ARTIFACTS = "generating_artifacts"
+    PERSISTING_ACTIONS = "persisting_actions"
     COMPLETED = "completed"
     NEEDS_REVIEW = "needs_review"
     FAILED = "failed"
@@ -77,3 +78,14 @@ class ArtifactType(StrEnum):
 class ReviewStatus(StrEnum):
     NEEDS_REVIEW = "needs_review"
     APPROVED = "approved"
+
+
+class FollowUpStatus(StrEnum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+
+
+class InternalActionName(StrEnum):
+    CREATE_CRM_OPPORTUNITY = "create_crm_opportunity"
+    CREATE_FOLLOWUP_TASK = "create_followup_task"
+    SAVE_CUSTOMER_MEMORY = "save_customer_memory"

@@ -9,6 +9,7 @@ from typing import Any, Never, Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.agent.registry import RegistryExecutionResult, ToolRegistry
@@ -31,7 +32,7 @@ from app.domain.artifacts import (
     EmailDraftNarrative,
     ProposalNarrative,
 )
-from app.domain.enums import AgentRunStatus, AgentRunStep
+from app.domain.enums import AgentRunStatus, AgentRunStep, ToolExecutionStatus
 from app.domain.recommendation import (
     RecommendationContext,
     RecommendationDraft,
@@ -49,6 +50,7 @@ from app.services.inquiry_analysis import (
     InquiryAnalysisError,
     InquiryAnalysisService,
 )
+from app.services.internal_actions import InternalActionError, InternalActionsService
 from app.services.quote_calculation import (
     QuoteCalculationError,
     QuoteCalculationService,
@@ -60,8 +62,6 @@ from app.services.recommendation_validation import (
 Message = dict[str, Any]
 ToolDefinition = dict[str, Any]
 
-HUMAN_REVIEW_REQUIRED_CODE = "HUMAN_REVIEW_REQUIRED"
-HUMAN_REVIEW_REQUIRED_MESSAGE = "The generated commercial artifacts require human review."
 PROPOSAL_INVALID_RESPONSE_CODE = "PROPOSAL_INVALID_RESPONSE"
 EMAIL_DRAFT_INVALID_RESPONSE_CODE = "EMAIL_DRAFT_INVALID_RESPONSE"
 NARRATIVE_COMMERCIAL_PROHIBITION = (
@@ -1251,11 +1251,85 @@ class BoundedRecommendationOrchestrator:
         )
         self.session.commit()
 
+        run = self._require_run(run_id)
+        self.run_repository.set_step(run, AgentRunStep.PERSISTING_ACTIONS)
+        self.run_repository.append_event(
+            run=run,
+            event_type="internal_actions_started",
+            step=AgentRunStep.PERSISTING_ACTIONS,
+            payload={"action_count": 3},
+        )
+        self.session.commit()
+
+        try:
+            InternalActionsService(self.session).execute(run_id)
+            self.session.commit()
+        except InternalActionError as exc:
+            return self._internal_actions_review(
+                run_id=run_id,
+                exc=exc,
+                payload=result_payload,
+            )
+        except SQLAlchemyError:
+            return self._internal_actions_review(
+                run_id=run_id,
+                exc=InternalActionError(
+                    code="INTERNAL_ACTION_PERSISTENCE_ERROR",
+                    message="The internal actions could not be persisted.",
+                ),
+                payload=result_payload,
+            )
+
+        return self._result(self._require_run(run_id))
+
+    def _internal_actions_review(
+        self,
+        *,
+        run_id: str,
+        exc: InternalActionError,
+        payload: Mapping[str, object],
+    ) -> OrchestrationResult:
+        self.session.rollback()
+        run = self._require_run(run_id)
+        if exc.action_name is not None:
+            execution = self.run_repository.start_tool_execution(
+                run=run,
+                tool_name=exc.action_name.value,
+                input_payload={
+                    "fingerprint": (
+                        exc.fingerprint[:12] if exc.fingerprint else None
+                    )
+                },
+            )
+            self.run_repository.finish_tool_execution(
+                execution,
+                status=ToolExecutionStatus.REJECTED,
+                output_payload={"error_code": exc.code},
+                duration_ms=0,
+                error_code=exc.code,
+            )
+        self.run_repository.append_event(
+            run=run,
+            event_type="internal_action_rejected",
+            step=AgentRunStep.PERSISTING_ACTIONS,
+            payload={
+                "action_name": (
+                    exc.action_name.value if exc.action_name else None
+                ),
+                "error_code": exc.code,
+            },
+        )
+        self.run_repository.append_event(
+            run=run,
+            event_type="internal_actions_rolled_back",
+            step=AgentRunStep.PERSISTING_ACTIONS,
+            payload={"error_code": exc.code},
+        )
         return self._needs_review(
             run_id,
-            code=HUMAN_REVIEW_REQUIRED_CODE,
-            message=HUMAN_REVIEW_REQUIRED_MESSAGE,
-            payload=result_payload,
+            code=exc.code,
+            message=exc.message,
+            payload=payload,
         )
 
     def _needs_review(

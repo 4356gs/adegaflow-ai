@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from datetime import timedelta
 from typing import Any
 
 from app.agent.orchestrator import (
@@ -21,15 +22,16 @@ from app.domain.artifacts import (
     EmailDraftNarrative,
     ProposalNarrative,
 )
-from app.domain.enums import AgentRunStatus, ArtifactType
+from app.domain.enums import AgentRunStatus, ArtifactType, InternalActionName
 from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.quote_artifacts import GeneratedArtifactRepository
 from app.services.artifact_persistence import (
     ArtifactPersistenceError,
     ArtifactPersistenceService,
 )
+from app.services.internal_actions import InternalActionError, InternalActionsService
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 INQUIRY_ID = "dddddddd-dddd-4ddd-8ddd-ddddddddddd1"
@@ -137,6 +139,9 @@ def _prepare_inquiry(
 ) -> Inquiry:
     inquiry = db_session.get(Inquiry, INQUIRY_ID)
     assert inquiry is not None
+    db_session.execute(
+        delete(Opportunity).where(Opportunity.inquiry_id == INQUIRY_ID)
+    )
     inquiry.customer_id = customer_id
     inquiry.raw_message = (
         "We need 600 bottles of Albariño for specialised wine shops "
@@ -300,7 +305,7 @@ def _run_for_inquiry(
     return orchestrator.run(INQUIRY_ID)
 
 
-def test_completes_primary_scenario_with_trace_and_no_writes(
+def test_completes_primary_scenario_with_atomic_internal_actions(
     db_session: Session,
 ) -> None:
     _prepare_inquiry(db_session)
@@ -334,7 +339,19 @@ def test_completes_primary_scenario_with_trace_and_no_writes(
     after_opportunities = db_session.scalar(
         select(func.count()).select_from(Opportunity)
     )
-    assert after_opportunities == before_opportunities
+    assert after_opportunities == before_opportunities + 1
+    opportunity = db_session.scalar(
+        select(Opportunity).where(Opportunity.inquiry_id == INQUIRY_ID)
+    )
+    inquiry = db_session.get(Inquiry, INQUIRY_ID)
+    assert opportunity is not None
+    assert inquiry is not None
+    assert opportunity.target_date == (
+        inquiry.received_at.date() + timedelta(days=60)
+    )
+    assert result.result_payload["opportunity"]["score"] == 90
+    assert result.result_payload["followup"]["status"] == "pending"
+    assert result.result_payload["memory"]["saved_count"] >= 1
 
     repository = AgentRunRepository(db_session)
     executions = repository.list_tool_executions(result.run_id)
@@ -343,26 +360,70 @@ def test_completes_primary_scenario_with_trace_and_no_writes(
         "search_catalog",
         "get_product_details",
         "check_stock",
+        "create_crm_opportunity",
+        "create_followup_task",
+        "save_customer_memory",
     ]
 
     events = repository.list_events(result.run_id)
     event_types = [event.event_type for event in events]
     assert "analysis_reused" in event_types
     assert "recommendation_validated" in event_types
-    assert event_types[-10:] == [
-        "quote_calculation_started",
-        "quote_calculated",
-        "quote_persisted",
-        "proposal_generation_started",
-        "proposal_received",
-        "proposal_persisted",
-        "email_generation_started",
-        "email_draft_received",
-        "email_draft_persisted",
+    assert event_types[-11:] == [
+        "internal_actions_started",
+        "customer_resolution_started",
+        "customer_reused",
+        "crm_opportunity_started",
+        "crm_opportunity_persisted",
+        "followup_task_started",
+        "followup_task_persisted",
+        "customer_memory_started",
+        "customer_memory_persisted",
+        "internal_actions_completed",
         "run_needs_review",
     ]
     assert client.request_calls == 4
     assert client.json_calls == 3
+
+
+def test_internal_action_conflict_rolls_back_and_preserves_artifacts(
+    db_session: Session,
+    monkeypatch,
+) -> None:
+    _prepare_inquiry(db_session)
+    client = FakeModelClient(
+        db_session,
+        tool_turns=_primary_tool_turns(),
+        json_payloads=_successful_json_payloads(),
+    )
+
+    def reject_actions(_service, _run_id):
+        raise InternalActionError(
+            code="IDEMPOTENCY_CONFLICT",
+            message="Idempotency key content conflicts.",
+            action_name=InternalActionName.CREATE_FOLLOWUP_TASK,
+            fingerprint="a" * 64,
+        )
+
+    monkeypatch.setattr(InternalActionsService, "execute", reject_actions)
+    result = _run_for_inquiry(db_session, client)
+
+    assert result.status is AgentRunStatus.NEEDS_REVIEW
+    assert result.error_code == "IDEMPOTENCY_CONFLICT"
+    assert db_session.scalar(select(func.count()).select_from(Opportunity)) == 0
+    assert len(GeneratedArtifactRepository(db_session).list_by_run(result.run_id)) == 2
+    repository = AgentRunRepository(db_session)
+    executions = repository.list_tool_executions(result.run_id)
+    assert executions[-1].tool_name == "create_followup_task"
+    assert executions[-1].status == "rejected"
+    assert [event.event_type for event in repository.list_events(result.run_id)][
+        -4:
+    ] == [
+        "internal_actions_started",
+        "internal_action_rejected",
+        "internal_actions_rolled_back",
+        "run_needs_review",
+    ]
 
 
 def test_runs_analysis_when_persisted_analysis_is_missing(

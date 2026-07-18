@@ -74,11 +74,34 @@ Block 6 was verified on `main` after merging PR #6.
 
 The known non-blocking Starlette TestClient warning remains unchanged.
 
+## Deterministic internal actions — Block 7
+
+Block 7 was verified on `feat/sprint2-internal-actions` from baseline
+`2cb343b`.
+
+| Check | Result |
+|---|---|
+| Ruff | Passed |
+| mypy strict | Passed, 48 source files |
+| pytest excluding live Qwen | Passed, 102 tests |
+| Branch coverage | 89.82% |
+| Alembic `0003 → 0004 → 0003 → 0004` | Passed |
+| CRM opportunity | Deterministic and limited to one per inquiry |
+| Follow-up | Pending, exactly seven days from injected UTC clock |
+| Customer memory | Explicit, limited, normalized and deduplicated |
+| Receipts | Three canonical SHA-256 idempotency records |
+| Atomic rollback | Verified for an intermediate persistence failure |
+| Qwen calls during internal actions | None |
+| Inventory mutation | None |
+| API, background tasks, frontend and external integrations | Not implemented |
+
+The known non-blocking Starlette TestClient warning remains unchanged.
+
 ## Current target-repository verification
 
 ```bash
 make check-api
 ```
 
-The latest combined verification on `main` passed after Block 6. Docker
-behavior was not changed by Block 6.
+The latest combined verification passed on the Block 7 implementation branch.
+Docker behavior was not changed by Block 7.
