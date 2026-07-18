@@ -97,6 +97,29 @@ Block 7 was verified on `feat/sprint2-internal-actions` from baseline
 
 The known non-blocking Starlette TestClient warning remains unchanged.
 
+## Block 8 documentation review
+
+Block 8 was planned from `main` at `644d12f` without changing product code.
+
+| Check | Result |
+|---|---|
+| ADR-014 | Accepted for MVP |
+| Binding plan | `docs/implementation/064-api-and-async-execution.md` |
+| API contract | Versioned inquiries, runs, polling, result and retry |
+| Async boundary | One in-process consumer; no durable queue |
+| Restart policy | `RUN_INTERRUPTED` plus explicit retry |
+| Retry ownership | New run linked by `retry_of_run_id` |
+| HTTP idempotency | Persistent keys for inquiry, run and retry commands |
+| Artifact approval, frontend and external writes | Excluded |
+| `git diff --check` | Passed |
+| Ruff | Passed |
+| mypy strict | Passed, 48 source files |
+| pytest excluding live Qwen | Passed, 102 tests |
+
+The implementation and its validation evidence remain pending. The Block 7
+quality baseline is unchanged. The known non-blocking Starlette TestClient
+warning remains unchanged.
+
 ## Current target-repository verification
 
 ```bash

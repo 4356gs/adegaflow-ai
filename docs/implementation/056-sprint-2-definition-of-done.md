@@ -5,6 +5,8 @@ El Sprint 2 no se considera terminado por tener un endpoint funcional. Debe cump
 ## Producto
 
 - UC-001 funciona por HTTP.
+- Los comandos HTTP son idempotentes.
+- El procesamiento ocurre fuera de la petición original.
 - Datos extraídos visibles en respuesta API.
 - Catálogo y stock provienen de tools.
 - Recomendación validada.
@@ -14,6 +16,8 @@ El Sprint 2 no se considera terminado por tener un endpoint funcional. Debe cump
 - Memoria guardada y recuperada.
 - Acciones internas atómicas e idempotentes.
 - Trazabilidad completa.
+- Estado, eventos y resultado son consultables mediante polling.
+- Los fallos recuperables pueden crear un nuevo intento auditable.
 
 ## Ingeniería
 
@@ -22,10 +26,13 @@ El Sprint 2 no se considera terminado por tener un endpoint funcional. Debe cump
 - schemas tipados;
 - errores uniformes;
 - idempotencia;
+- claves HTTP persistentes;
 - receipts y fingerprints para escrituras internas;
 - límites agentic;
 - transacciones;
 - logs estructurados;
+- dispatcher local con un solo consumidor;
+- recuperación segura de runs interrumpidos;
 - configuración por entorno;
 - Dockerfile funcional;
 - sin secretos.
@@ -49,7 +56,10 @@ El Sprint 2 no se considera terminado por tener un endpoint funcional. Debe cump
 - ejecución de tests;
 - evidencia del spike;
 - OpenAPI accesible;
+- rutas de producto exclusivamente bajo `/api/v1`;
+- limitación de un worker documentada;
 - ADR-011 vigente.
+- ADR-014 vigente.
 
 ## Calidad
 
@@ -72,6 +82,14 @@ El cierre requiere una demostración desde terminal o Swagger:
 5. recuperar memoria;
 6. repetir con el mismo comprador.
 
+La demostración HTTP debe probar además:
+
+7. respuesta `202` al iniciar el run;
+8. polling de estado y eventos;
+9. resultado expandido terminal;
+10. idempotencia de un POST repetido;
+11. retry de un fallo recuperable mediante un run nuevo.
+
 La demostración debe mostrar además que repetir las acciones del mismo run no
 duplica oportunidad, seguimiento ni memoria.
 
@@ -81,6 +99,8 @@ Solo se inicia la aplicación web cuando:
 
 - el contrato API no cambia de forma material;
 - AT-001, AT-003, AT-004, AT-005, AT-007, AT-008, AT-009, AT-010, AT-013 y
-  AT-014 pasan;
+  AT-014, AT-015, AT-016, AT-017, AT-018, AT-019 y AT-020 pasan;
 - el backend puede ejecutarse en Docker;
 - el flujo no depende de respuestas hardcodeadas.
+- el contrato OpenAPI no publica rutas de producto sin versión;
+- no se necesita una cola durable para ejecutar la demo con un worker.

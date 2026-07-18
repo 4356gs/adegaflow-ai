@@ -80,6 +80,18 @@ Una escritura falla dentro de la transacción.
 memorias y receipts; se conservan quote y artefactos del Bloque 6 y no quedan
 registros parciales incompatibles.
 
+## AT-011 — Límite de rondas
+
+El modelo continúa solicitando tools.
+
+**Esperado:** detener al alcanzar el límite y marcar `needs_review` o `failed` según resultados.
+
+## AT-012 — Ausencia de clave API
+
+La API arranca en modo test, pero una ejecución live no puede iniciarse.
+
+**Esperado:** health informa `qwen_configured=false`; no expone configuración sensible.
+
 ## AT-013 — Acciones internas completas
 
 Quote, propuesta y correo son válidos y pertenecen al mismo run.
@@ -95,14 +107,57 @@ Existe quote, pero falta propuesta o correo válido.
 **Esperado:** conservar el resultado parcial en `needs_review`; no ejecutar
 oportunidad, seguimiento ni memoria.
 
-## AT-011 — Límite de rondas
+## AT-015 — Ejecución HTTP asíncrona
 
-El modelo continúa solicitando tools.
+**Dado** que existe una inquiry válida
 
-**Esperado:** detener al alcanzar el límite y marcar `needs_review` o `failed` según resultados.
+**Cuando** se crea un run mediante `POST /api/v1/inquiries/{id}/agent-runs`
 
-## AT-012 — Ausencia de clave API
+**Entonces** responde `202` después de persistir `queued`, encola una sola vez y
+el cliente puede observar la transición mediante polling sin mantener abierta
+la petición original.
 
-La API arranca en modo test, pero una ejecución live no puede iniciarse.
+## AT-016 — Idempotencia HTTP
 
-**Esperado:** health informa `qwen_configured=false`; no expone configuración sensible.
+**Dado** un comando POST con `Idempotency-Key`
+
+**Cuando** el cliente repite el mismo comando
+
+**Entonces** recibe el mismo recurso y no duplica inquiry, run ni enqueue. Si
+reutiliza la clave con otro contenido o parent, recibe
+`IDEMPOTENCY_CONFLICT`.
+
+## AT-017 — Interrupción del proceso
+
+**Dado** un run `queued` o `running` que pertenecía al proceso anterior
+
+**Cuando** FastAPI inicia de nuevo
+
+**Entonces** el run termina `failed` con `RUN_INTERRUPTED`, conserva auditoría y
+se marca retryable sin reanudar automáticamente Qwen.
+
+## AT-018 — Retry auditable
+
+**Dado** un run terminal con error recuperable
+
+**Cuando** se solicita retry con una clave nueva
+
+**Entonces** se crea otro run para la misma inquiry, se conserva
+`retry_of_run_id`, el intento original permanece inmutable y el nuevo run se
+encola una vez. Un run exitoso que espera revisión humana no admite retry.
+
+## AT-019 — Resultado HTTP completo
+
+**Dado** un run terminal
+
+**Cuando** se consulta su resultado
+
+**Entonces** la API ensambla desde fuentes autoritativas las secciones
+disponibles de análisis, recomendación, quote, artefactos y acciones, sin
+exponer secretos, datos sensibles innecesarios o respuestas crudas de Qwen.
+
+## AT-020 — Versionado de rutas
+
+**Esperado:** `/health` permanece sin versión; inquiries, runs, oportunidades y
+memoria solo están disponibles bajo `/api/v1`. No existe un alias accidental
+`/inquiries`.

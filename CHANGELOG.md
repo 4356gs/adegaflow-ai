@@ -36,6 +36,11 @@
 - Canonical SHA-256 fingerprints and persistent idempotency receipts.
 - Atomic orchestration of opportunity, follow-up, memory, audit and terminal state.
 - Unit, migration and orchestration coverage for internal actions and rollback.
+- ADR-014 for versioned HTTP commands and recoverable local asynchronous execution.
+- Binding Sprint 2 Block 8 implementation plan for inquiries, runs, polling,
+  results and retry.
+- Acceptance scenarios for HTTP idempotency, process interruption, retry and
+  route versioning.
 
 ### Changed
 
@@ -47,6 +52,8 @@
   terminate in `needs_review`.
 - Successful backend runs now continue through atomic internal actions while
   preserving human review as the terminal state.
+- API contracts now keep product routes under `/api/v1`, use idempotent POST
+  commands and exclude artifact approval from Block 8.
 
 ## 0.1.0 — 2026-07-10
 

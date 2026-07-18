@@ -87,6 +87,17 @@
 | AF-070 | Añadir panel de métricas simuladas | P1 | 3 | 3 |
 | AF-071 | Exportar propuesta a PDF | P1 | 5 | 3 |
 
+## Epic E5A — API del flujo principal
+
+| ID | Historia / tarea | Pri. | SP | Sprint |
+|---|---|---:|---:|---:|
+| AF-072 | Crear y consultar inquiries por API | P0 | 3 | 2 |
+| AF-073 | Despachar agent runs fuera de la petición HTTP | P0 | 5 | 2 |
+| AF-074 | Consultar estado, eventos y resultado por polling | P0 | 5 | 2 |
+| AF-075 | Implementar idempotencia de comandos HTTP | P0 | 3 | 2 |
+| AF-076 | Recuperar interrupciones y crear retries auditables | P0 | 5 | 2 |
+| AF-077 | Publicar read models de oportunidad y memoria | P0 | 3 | 2 |
+
 ## Epic E6 — Calidad, seguridad y entrega
 
 | ID | Historia / tarea | Pri. | SP | Sprint |

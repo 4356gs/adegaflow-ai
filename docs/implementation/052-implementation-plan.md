@@ -93,13 +93,19 @@ Construir verticalmente. Cada bloque debe dejar una capacidad ejecutable y proba
 
 ### Bloque 8 — API y ejecución asíncrona
 
-- endpoints;
-- background task;
-- polling de estado;
-- retry;
-- manejo de errores.
+- endpoints versionados y schemas tipados;
+- idempotencia de comandos HTTP;
+- dispatcher local con un consumidor;
+- polling de estado, eventos y resultado;
+- recuperación de runs interrumpidos;
+- retry mediante un run nuevo;
+- manejo uniforme de errores.
 
 **Salida:** UC-001 invocable por HTTP.
+
+**Restricción:** un proceso/worker, sin Redis, Celery, WebSocket, aprobación de
+artefactos ni frontend. ADR-014 y `064-api-and-async-execution.md` son
+vinculantes.
 
 ### Bloque 9 — Pruebas y documentación
 
