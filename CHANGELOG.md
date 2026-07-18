@@ -29,6 +29,13 @@
 - Persistent proposal and email artifacts requiring human review.
 - Partial-result handling that preserves a valid quote when narrative generation fails.
 - Unit, migration and orchestration coverage for quote and artifact generation.
+- Reversible follow-up and internal-action receipt migration.
+- Deterministic customer resolution and CRM opportunity qualification.
+- Seven-day follow-up creation through an injected UTC clock.
+- Explicit, limited and deduplicated commercial memory persistence.
+- Canonical SHA-256 fingerprints and persistent idempotency receipts.
+- Atomic orchestration of opportunity, follow-up, memory, audit and terminal state.
+- Unit, migration and orchestration coverage for internal actions and rollback.
 
 ### Changed
 
@@ -38,6 +45,8 @@
 - Project status now records Sprint 2 Block 6 as implemented and verified.
 - Successful backend runs now continue through quote and artifact generation and
   terminate in `needs_review`.
+- Successful backend runs now continue through atomic internal actions while
+  preserving human review as the terminal state.
 
 ## 0.1.0 — 2026-07-10
 

@@ -1,6 +1,6 @@
 # Sprint 2 Bloque 7 — Acciones internas
 
-- **Estado:** Ready for implementation
+- **Estado:** Implemented and verified
 - **Sprint:** 2 — Núcleo funcional
 - **Bloque:** 7
 - **Baseline:** `69ec1ee`
@@ -525,3 +525,26 @@ completo de memorias ni entidades completas.
 9. eventos y errores seguros;
 10. tests;
 11. documentación de cierre.
+
+## Cierre de implementación
+
+Implementado en `feat/sprint2-internal-actions` desde `main` en `2cb343b`.
+
+- migración reversible `0004_internal_actions`;
+- modelos y repositorios para seguimiento y receipts;
+- contratos Pydantic estrictos para oportunidad, seguimiento y memoria;
+- resolución o creación mínima de customer sin matching implícito;
+- scoring, prioridad, título, resumen y target date deterministas;
+- seguimiento a siete días mediante reloj UTC inyectable;
+- memoria explícita, limitada, normalizada y sin campos sensibles;
+- fingerprints SHA-256 canónicos y reintentos persistentes;
+- una unidad transaccional para entidades, receipts, auditoría y estado terminal;
+- orquestador extendido sin nuevas llamadas a Qwen;
+- rollback y conflicto seguro preservando quote y artefactos;
+- 102 pruebas aprobadas y 89.82% de branch coverage;
+- Ruff y mypy strict aprobados en 48 archivos fuente;
+- migración `0003 → 0004 → 0003 → 0004` verificada;
+- warning conocido de Starlette TestClient sin cambios y no bloqueante.
+
+No se añadieron API HTTP, background tasks, frontend, correo real, CRM externo,
+calendario externo ni cambios de inventario. El Bloque 8 no se inició.
