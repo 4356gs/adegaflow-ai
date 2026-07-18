@@ -35,7 +35,10 @@ Se solicitan 900 botellas de un producto con 720 disponibles.
 
 No existe customer.
 
-**Esperado:** crear perfil mínimo, asociar inquiry y guardar memoria inicial.
+**Esperado:** si el análisis validado contiene empresa y mercado, crear perfil
+mínimo, asociar inquiry y guardar memoria inicial dentro de la misma
+transacción. Si falta cualquiera de esos dos campos, no crear un placeholder y
+terminar `needs_review`.
 
 ## AT-005 — JSON inválido
 
@@ -59,7 +62,9 @@ Qwen excede timeout.
 
 Se repite una escritura con la misma idempotency key.
 
-**Esperado:** no duplicar oportunidad, seguimiento ni memoria.
+**Esperado:** la misma clave y fingerprint reutiliza las referencias sin
+duplicar oportunidad, seguimiento ni memoria. La misma clave con otro
+fingerprint produce `IDEMPOTENCY_CONFLICT` y no sobrescribe datos.
 
 ## AT-009 — Segunda sesión
 
@@ -71,7 +76,24 @@ Se procesa una nueva consulta del mismo comprador.
 
 Una escritura falla dentro de la transacción.
 
-**Esperado:** rollback; no quedan registros parciales incompatibles.
+**Esperado:** rollback de customer nuevo, asociación, oportunidad, seguimiento,
+memorias y receipts; se conservan quote y artefactos del Bloque 6 y no quedan
+registros parciales incompatibles.
+
+## AT-013 — Acciones internas completas
+
+Quote, propuesta y correo son válidos y pertenecen al mismo run.
+
+**Esperado:** crear oportunidad con score y prioridad deterministas, seguimiento
+a siete días y memoria explícita; registrar las tres tools y terminar
+`needs_review` sin otra llamada a Qwen.
+
+## AT-014 — Artefactos parciales
+
+Existe quote, pero falta propuesta o correo válido.
+
+**Esperado:** conservar el resultado parcial en `needs_review`; no ejecutar
+oportunidad, seguimiento ni memoria.
 
 ## AT-011 — Límite de rondas
 

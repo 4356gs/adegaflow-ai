@@ -85,7 +85,9 @@ Construir verticalmente. Cada bloque debe dejar una capacidad ejecutable y proba
 - `create_crm_opportunity`;
 - `create_followup_task`;
 - `save_customer_memory`;
-- idempotency keys.
+- resolución mínima de customer;
+- score y prioridad deterministas;
+- receipts, fingerprints y transacción atómica.
 
 **Salida:** flujo completo persistente.
 

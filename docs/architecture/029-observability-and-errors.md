@@ -106,6 +106,23 @@ Eventos mínimos:
 - run_needs_review;
 - run_failed.
 
+El Bloque 7 añade:
+
+- internal_actions_started;
+- customer_resolution_started;
+- customer_reused;
+- customer_created;
+- crm_opportunity_started;
+- crm_opportunity_persisted;
+- followup_task_started;
+- followup_task_persisted;
+- customer_memory_started;
+- customer_memory_persisted;
+- internal_action_reused;
+- internal_action_rejected;
+- internal_actions_rolled_back;
+- internal_actions_completed.
+
 El payload contiene resúmenes seguros, no respuestas completas del proveedor.
 
 ### Orden y correlación

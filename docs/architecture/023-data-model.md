@@ -19,6 +19,7 @@ erDiagram
     AGENT_RUN ||--o{ GENERATED_ARTIFACT : produces
     QUOTE ||--o{ GENERATED_ARTIFACT : informs
     OPPORTUNITY ||--o{ FOLLOW_UP_TASK : has
+    AGENT_RUN ||--o{ INTERNAL_ACTION_RECEIPT : owns
     AGENT_RUN ||--o{ TOOL_EXECUTION : records
     AGENT_RUN ||--o{ AGENT_RUN_EVENT : emits
 ```
@@ -123,7 +124,9 @@ max(0, available_bottles - reserved_bottles)
 | created_at | datetime | UTC |
 | updated_at | datetime | UTC |
 
-La tabla existe para bloques posteriores. Sprint 2 Bloque 5 no crea ni actualiza oportunidades.
+Sprint 2 Bloque 7 crea como máximo una oportunidad por inquiry mediante una
+acción interna determinista. No se incluyen importes ni texto generado por el
+modelo en este registro.
 
 ### `quotes`
 
@@ -170,6 +173,33 @@ unique(quote_id, product_id)
 | due_at | datetime | UTC |
 | status | enum | pending, completed |
 | created_at | datetime | UTC |
+
+El Bloque 7 crea una tarea `pending` con vencimiento a siete días mediante un
+reloj UTC inyectable. La idempotencia se conserva en el receipt de la acción.
+
+### `internal_action_receipts`
+
+Ledger mínimo para la idempotencia de las escrituras internas.
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| id | UUID | PK |
+| agent_run_id | UUID | FK |
+| action_name | enum | create_crm_opportunity, create_followup_task, save_customer_memory |
+| idempotency_key | string | único |
+| request_fingerprint | string(64) | SHA-256 hexadecimal |
+| result_payload | JSON | referencias resumidas |
+| created_at | datetime | UTC |
+
+Restricciones:
+
+```text
+unique(idempotency_key)
+unique(agent_run_id, action_name)
+```
+
+Los receipts no sustituyen `tool_executions`: el receipt permite reutilizar un
+resultado y `tool_executions` conserva cada intento.
 
 ### `generated_artifacts`
 
@@ -228,6 +258,10 @@ El Bloque 6 añade:
 
 - calculating_quote;
 - generating_artifacts.
+
+El Bloque 7 añade:
+
+- persisting_actions.
 
 `result_payload` conserva la recomendación validada y puede añadir referencias
 resumidas a la cotización y los artefactos. El contenido completo permanece en
@@ -296,6 +330,11 @@ Eventos mínimos del Bloque 5:
 - run_completed;
 - run_needs_review;
 - run_failed.
+
+El Bloque 7 añade eventos para resolución de customer, oportunidad,
+seguimiento, memoria, reutilización o rechazo idempotente, rollback y cierre de
+acciones internas. Los nombres vinculantes se definen en
+`063-internal-actions.md`.
 
 Los eventos no almacenan cadena de pensamiento. Solo contienen identificadores, conteos, resultados resumidos, reglas aplicadas, estados y errores seguros.
 

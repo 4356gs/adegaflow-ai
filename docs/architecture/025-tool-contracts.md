@@ -49,6 +49,10 @@ Las capacidades del Bloque 6 no se incorporan al tool registry expuesto a Qwen.
 `calculate_quote` es determinista y `generate_proposal`/`draft_email` son
 servicios de aplicación con prompts estructurados.
 
+Las acciones internas del Bloque 7 tampoco se incorporan a la allowlist
+seleccionable por Qwen. El orquestador las invoca en orden, registra cada
+intento como tool execution y aplica ADR-013.
+
 ---
 
 ## `search_catalog` — P0
@@ -203,7 +207,7 @@ Memorias activas y resumen de oportunidades anteriores.
       "source_inquiry_id": "uuid"
     }
   ],
-  "idempotency_key": "run-uuid-save-memory"
+  "idempotency_key": "run-uuid:save_customer_memory"
 }
 ```
 
@@ -211,7 +215,10 @@ Memorias activas y resumen de oportunidades anteriores.
 
 - no guardar inferencias sensibles;
 - no duplicar hechos equivalentes;
-- permitir invalidación posterior.
+- máximo 20 hechos explícitos;
+- omitir dirección, contacto, identificador fiscal y presupuesto;
+- permitir invalidación posterior;
+- usar un receipt y fingerprint para idempotencia de lote.
 
 ---
 
@@ -231,13 +238,15 @@ Memorias activas y resumen de oportunidades anteriores.
   "estimated_bottles": 600,
   "target_date": "2026-09-08",
   "summary": "Qualified B2B import opportunity.",
-  "idempotency_key": "run-uuid-create-opportunity"
+  "idempotency_key": "run-uuid:create_crm_opportunity"
 }
 ```
 
 ### Salida
 
-`opportunity_id`, etapa y timestamp.
+`opportunity_id`, etapa, prioridad, score y timestamp. Stage, score, prioridad,
+título y resumen se construyen mediante reglas deterministas; Qwen no los
+proporciona.
 
 ---
 
@@ -256,9 +265,12 @@ Permite cambiar etapa, prioridad o resumen. No es necesaria para el camino feliz
   "opportunity_id": "uuid",
   "title": "Follow up on samples and pricing",
   "due_at": "2026-07-17T15:00:00Z",
-  "idempotency_key": "run-uuid-followup"
+  "idempotency_key": "run-uuid:create_followup_task"
 }
 ```
+
+El vencimiento usa un reloj UTC inyectable y se fija a siete días naturales. No
+se crea una entrada de calendario ni una notificación externa.
 
 ---
 
