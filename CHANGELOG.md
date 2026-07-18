@@ -22,12 +22,22 @@
 - Deterministic product recommendation enrichment and validation.
 - Controlled recommendation correction and safe terminal run states.
 - Unit and integration tests for migration, registry, validation and orchestration.
+- Reversible quote and generated-artifact migration.
+- Deterministic EUR quote calculation using integer cents and verified product snapshots.
+- Versioned `proposal_writer.v1` and `email_writer.v1` prompts.
+- Strict proposal and email-draft schemas with backend-owned commercial data.
+- Persistent proposal and email artifacts requiring human review.
+- Partial-result handling that preserves a valid quote when narrative generation fails.
+- Unit, migration and orchestration coverage for quote and artifact generation.
 
 ### Changed
 
 - Product model now records recommended commercial channels in addition to markets.
 - Project status reflects the approved Qwen live spike.
 - Project status now records Sprint 2 Block 5 as implemented and verified.
+- Project status now records Sprint 2 Block 6 as implemented and verified.
+- Successful backend runs now continue through quote and artifact generation and
+  terminate in `needs_review`.
 
 ## 0.1.0 — 2026-07-10
 

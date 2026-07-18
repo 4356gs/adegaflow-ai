@@ -70,6 +70,11 @@ Sprint 2 Bloque 6 extiende los nuevos runs desde una recomendación válida haci
 `needs_review` porque la propuesta y el correo requieren revisión humana. Las
 acciones internas permanecen fuera de este bloque.
 
+Sprint 2 Bloque 7 permite que los nuevos runs con quote, propuesta y correo
+válidos continúen a `persisting_actions`. Después de crear CRM simulado,
+seguimiento y memoria, el run sigue terminando `needs_review`; las acciones
+internas no aprueban los artefactos.
+
 ## Flujo detallado
 
 ### 1. Ingesta
@@ -354,15 +359,18 @@ margen ni conversiones. La cotización no reserva stock y se persiste como
 
 ### 14. Acciones internas
 
-Tras validar resultados futuros:
+Después de validar la pertenencia de quote y ambos artefactos, el orquestador:
 
-- `create_crm_opportunity`;
-- `create_followup_task`;
-- `save_customer_memory`.
+1. resuelve o crea un customer mínimo identificable;
+2. ejecuta `create_crm_opportunity`;
+3. ejecuta `create_followup_task`;
+4. ejecuta `save_customer_memory`;
+5. persiste receipts, referencias y eventos;
+6. termina en `needs_review`.
 
-Estas acciones son reversibles dentro de la demo y no afectan sistemas externos.
-
-Esta fase queda fuera del Sprint 2 Bloque 5.
+Las tres capacidades son internas, tipadas y registradas, pero no seleccionables
+por Qwen. Score, prioridad, fecha de seguimiento y memorias se derivan mediante
+reglas de ADR-013. La unidad completa es atómica y no afecta sistemas externos.
 
 ### 15. Punto de control humano
 
@@ -414,6 +422,20 @@ No existe tool de envío real.
 | Recomendación ausente o inválida | failed |
 | Inconsistencia aritmética | failed |
 | Error de persistencia | failed |
+
+## Estados terminales del Bloque 7
+
+| Condición | Estado |
+|---|---|
+| Oportunidad, seguimiento y memoria persistidos | needs_review |
+| Operaciones idempotentes reutilizadas | needs_review |
+| Sin hechos de memoria permitidos | needs_review con warning |
+| Identidad insuficiente para customer nuevo | needs_review |
+| Conflicto de idempotencia | needs_review |
+| Precondición de artefactos incompleta | needs_review |
+| Error de validación de acciones | needs_review |
+| Error transaccional recuperable | rollback y needs_review |
+| Imposibilidad de persistir estado seguro | error de infraestructura |
 
 ## Fallbacks
 

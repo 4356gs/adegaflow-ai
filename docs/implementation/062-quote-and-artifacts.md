@@ -1,6 +1,6 @@
 # Sprint 2 Bloque 6 — Cotización y artefactos
 
-- **Estado:** Ready for implementation
+- **Estado:** Implemented and merged
 - **Sprint:** 2 — Núcleo funcional
 - **Bloque:** 6
 - **Baseline:** `50316b0`
@@ -8,6 +8,10 @@
 - **Rama de implementación prevista:** `feat/sprint2-quote-artifacts`
 - **Fecha:** 2026-07-13
 - **ADR vinculante:** ADR-012
+- **Rama de implementación:** `feat/sprint2-quote-artifacts`
+- **PR:** #6
+- **Merge commit:** `69ec1ee`
+- **Verificación:** Ruff passed; mypy strict passed in 44 source files; 85 tests passed; 92% total coverage
 
 ## Objetivo
 

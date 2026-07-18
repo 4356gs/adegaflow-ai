@@ -12,6 +12,7 @@ El Sprint 2 no se considera terminado por tener un endpoint funcional. Debe cump
 - Propuesta y correo persistidos.
 - CRM simulado y seguimiento persistidos.
 - Memoria guardada y recuperada.
+- Acciones internas atómicas e idempotentes.
 - Trazabilidad completa.
 
 ## Ingeniería
@@ -21,6 +22,7 @@ El Sprint 2 no se considera terminado por tener un endpoint funcional. Debe cump
 - schemas tipados;
 - errores uniformes;
 - idempotencia;
+- receipts y fingerprints para escrituras internas;
 - límites agentic;
 - transacciones;
 - logs estructurados;
@@ -70,11 +72,15 @@ El cierre requiere una demostración desde terminal o Swagger:
 5. recuperar memoria;
 6. repetir con el mismo comprador.
 
+La demostración debe mostrar además que repetir las acciones del mismo run no
+duplica oportunidad, seguimiento ni memoria.
+
 ## Gate hacia Sprint 3
 
 Solo se inicia la aplicación web cuando:
 
 - el contrato API no cambia de forma material;
-- AT-001, AT-003, AT-005, AT-007 y AT-009 pasan;
+- AT-001, AT-003, AT-004, AT-005, AT-007, AT-008, AT-009, AT-010, AT-013 y
+  AT-014 pasan;
 - el backend puede ejecutarse en Docker;
 - el flujo no depende de respuestas hardcodeadas.

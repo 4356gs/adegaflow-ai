@@ -1,6 +1,8 @@
 # AdegaFlow AI API
 
-FastAPI backend, Qwen Cloud adapter, SQLite persistence, structured inquiry analysis and deterministic commercial tools.
+FastAPI backend, Qwen Cloud adapter, SQLite persistence, structured inquiry
+analysis, bounded recommendation orchestration, deterministic EUR quotes and
+reviewable commercial artifacts.
 
 ## Requirements
 
@@ -59,6 +61,20 @@ The catalog, stock and customer-history tools are implemented as typed applicati
 - marks provider or schema failures with safe application errors.
 
 The analysis service is not exposed through a temporary endpoint. It will be invoked by the bounded orchestrator and later by the approved inquiry API.
+
+## Current orchestration boundary
+
+New runs can currently:
+
+- analyze an inquiry;
+- retrieve customer history;
+- select and validate products through the closed read-tool registry;
+- calculate and persist one deterministic EUR quote;
+- generate and persist a proposal and email draft;
+- finish in `needs_review` with ordered events and summarized references.
+
+CRM opportunity creation, follow-up creation and memory writes remain deferred
+to Sprint 2 Block 7. HTTP orchestration endpoints remain deferred to Block 8.
 
 ## Quality
 

@@ -1,6 +1,6 @@
 # Verification Report
 
-Date: 2026-07-13
+Date: 2026-07-18
 
 ## Qwen Cloud gate
 
@@ -56,11 +56,29 @@ One non-blocking `StarletteDeprecationWarning` was emitted by the test-client
 dependency. No dependency changes were introduced as part of the Block 5
 closeout.
 
+## Deterministic quote and reviewable artifacts — Block 6
+
+Block 6 was verified on `main` after merging PR #6.
+
+| Check | Result |
+|---|---|
+| Merge commit | `69ec1ee` |
+| Ruff | Passed |
+| mypy strict | Passed, 44 source files |
+| pytest excluding live Qwen | Passed, 85 tests |
+| Total coverage | 92% |
+| Working tree | Clean |
+| Quote currency and arithmetic | Deterministic EUR integer cents |
+| Proposal and email draft | Persisted with `needs_review` |
+| CRM, follow-up, memory writes, API and frontend | Not implemented |
+
+The known non-blocking Starlette TestClient warning remains unchanged.
+
 ## Current target-repository verification
 
 ```bash
 make check-api
 ```
 
-The latest combined verification on `main` passed. Docker behavior was not
-changed by Block 5.
+The latest combined verification on `main` passed after Block 6. Docker
+behavior was not changed by Block 6.
