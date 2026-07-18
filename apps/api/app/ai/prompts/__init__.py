@@ -4,6 +4,8 @@ from importlib.resources import files
 
 INQUIRY_ANALYSIS_PROMPT_VERSION = "inquiry_analysis.v1"
 PRODUCT_RECOMMENDATION_PROMPT_VERSION = "product_recommendation.v1"
+PROPOSAL_WRITER_PROMPT_VERSION = "proposal_writer.v1"
+EMAIL_WRITER_PROMPT_VERSION = "email_writer.v1"
 
 
 def _load_prompt(version: str) -> str:
@@ -21,3 +23,15 @@ def load_product_recommendation_prompt() -> str:
     """Load the packaged prompt used for bounded product recommendation."""
 
     return _load_prompt(PRODUCT_RECOMMENDATION_PROMPT_VERSION)
+
+
+def load_proposal_writer_prompt() -> str:
+    """Load the packaged prompt used for proposal narrative drafts."""
+
+    return _load_prompt(PROPOSAL_WRITER_PROMPT_VERSION)
+
+
+def load_email_writer_prompt() -> str:
+    """Load the packaged prompt used for email narrative drafts."""
+
+    return _load_prompt(EMAIL_WRITER_PROMPT_VERSION)

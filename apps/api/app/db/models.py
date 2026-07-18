@@ -443,3 +443,177 @@ class AgentRunEvent(Base):
         nullable=False,
         default=utc_now,
     )
+
+
+class Quote(Base):
+    __tablename__ = "quotes"
+    __table_args__ = (
+        UniqueConstraint(
+            "agent_run_id",
+            name="uq_quotes_agent_run_id",
+        ),
+        CheckConstraint(
+            "currency = 'EUR'",
+            name="ck_quotes_currency_eur",
+        ),
+        CheckConstraint(
+            "subtotal_cents >= 0",
+            name="ck_quotes_subtotal_non_negative",
+        ),
+        CheckConstraint(
+            "status IN ('draft', 'reviewed')",
+            name="ck_quotes_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    agent_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("agent_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    currency: Mapped[str] = mapped_column(
+        String(3),
+        nullable=False,
+        default="EUR",
+    )
+    subtotal_cents: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="draft",
+    )
+    assumptions: Mapped[dict[str, object]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+
+class QuoteItem(Base):
+    __tablename__ = "quote_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "quote_id",
+            "product_id",
+            name="uq_quote_items_quote_product",
+        ),
+        CheckConstraint(
+            "quantity_bottles > 0",
+            name="ck_quote_items_quantity_positive",
+        ),
+        CheckConstraint(
+            "unit_price_cents >= 0",
+            name="ck_quote_items_unit_price_non_negative",
+        ),
+        CheckConstraint(
+            "line_total_cents >= 0",
+            name="ck_quote_items_line_total_non_negative",
+        ),
+        CheckConstraint(
+            "line_total_cents = quantity_bottles * unit_price_cents",
+            name="ck_quote_items_line_total_exact",
+        ),
+        CheckConstraint(
+            "cases > 0",
+            name="ck_quote_items_cases_positive",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    quote_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("quotes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    product_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("products.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    quantity_bottles: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    unit_price_cents: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    line_total_cents: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    cases: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+
+class GeneratedArtifact(Base):
+    __tablename__ = "generated_artifacts"
+    __table_args__ = (
+        UniqueConstraint(
+            "agent_run_id",
+            "artifact_type",
+            name="uq_generated_artifacts_run_type",
+        ),
+        CheckConstraint(
+            "artifact_type IN ('proposal', 'email_draft')",
+            name="ck_generated_artifacts_type",
+        ),
+        CheckConstraint(
+            "review_status IN ('needs_review', 'approved')",
+            name="ck_generated_artifacts_review_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    agent_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("agent_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    quote_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("quotes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    artifact_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+    language: Mapped[str] = mapped_column(
+        String(2),
+        nullable=False,
+    )
+    schema_version: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+    )
+    content: Mapped[dict[str, object]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+    review_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="needs_review",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
