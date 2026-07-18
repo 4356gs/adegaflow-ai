@@ -129,6 +129,7 @@ El payload contiene resúmenes seguros, no respuestas completas del proveedor.
 
 - `correlation_id` correlaciona logs y persistencia.
 - `agent_run_id` identifica una ejecución.
+- `retry_of_run_id` relaciona intentos sin sobrescribir el historial.
 - `sequence` ordena tool executions por run.
 - `sequence` ordena eventos por run.
 - Las restricciones únicas evitan secuencias duplicadas.
@@ -187,6 +188,11 @@ Para evitar crecimiento innecesario:
 | `PERSISTENCE_ERROR` | Base de datos | Sí, reintento limitado |
 | `RUN_LIMIT_REACHED` | Política agentic | No automático |
 | `UNEXPECTED_ERROR` | Interno | No automático |
+| `RUN_INTERRUPTED` | Reinicio del proceso | Sí, retry explícito |
+| `DISPATCH_FAILED` | Dispatcher local | Sí, retry explícito |
+| `DISPATCH_QUEUE_FULL` | Capacidad local | Sí, después |
+| `RUN_NOT_RETRYABLE` | Política HTTP | No |
+| `IDEMPOTENCY_CONFLICT` | Comando HTTP | No sin nueva clave/contenido coherente |
 
 Los códigos actuales del adaptador Qwen se conservan. La API futura podrá mapearlos a una taxonomía pública sin perder el código original seguro.
 
@@ -201,6 +207,11 @@ Los códigos actuales del adaptador Qwen se conservan. La API futura podrá mape
 - Persistencia: transacción y rollback.
 - Los reintentos de tools cuentan dentro del máximo de 10 ejecuciones.
 - Las rondas adicionales cuentan dentro del máximo de 6.
+- El retry HTTP del flujo completo nunca muta el run original.
+- Solo códigos de una allowlist cerrada crean un nuevo run.
+- La revisión humana, la entrada inválida y los límites agotados no son
+  retryables.
+- Reiniciar el proceso no reanuda automáticamente llamadas a Qwen.
 
 ## Estados y experiencia de error
 
@@ -283,6 +294,9 @@ La UI mostrará:
 - reglas de validación relevantes;
 - correlation ID;
 - botón de reintento cuando proceda.
+
+El botón usa el campo público `retryable`, calculado por el backend desde estado
+y error code. El cliente no decide si un run puede reintentarse.
 
 No mostrará:
 

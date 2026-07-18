@@ -102,6 +102,7 @@ max(0, available_bottles - reserved_bottles)
 | extracted_data | JSON | esquema versionado |
 | missing_fields | JSON | lista |
 | received_at | datetime | UTC |
+| submission_key | string | nullable, único; idempotencia HTTP |
 
 `extracted_data` conserva únicamente datos que validan contra el esquema estructurado vigente. `missing_fields` se calcula mediante reglas de aplicación, no mediante opinión del modelo.
 
@@ -239,8 +240,17 @@ Una inquiry puede tener múltiples runs. Esto permite reintentos y conserva el h
 | current_step | string | paso visible |
 | error_code | string | opcional |
 | error_message_safe | string | opcional |
+| request_key | string | nullable, único; comando HTTP |
+| retry_of_run_id | UUID | self-FK nullable |
 
 `status` representa el estado global. `current_step` representa la fase funcional activa.
+
+El Bloque 8 añade idempotencia al límite HTTP sin reutilizar los receipts de
+acciones internas. `request_key` evita crear o encolar dos veces el mismo run.
+`retry_of_run_id` conserva el intento original; un retry siempre crea una nueva
+fila y no sobrescribe eventos, tools o resultados anteriores.
+
+Los registros históricos y seeds pueden conservar ambos campos en null.
 
 Pasos implementados hasta el Bloque 5:
 
@@ -262,6 +272,9 @@ El Bloque 6 añade:
 El Bloque 7 añade:
 
 - persisting_actions.
+
+El Bloque 8 no añade pasos funcionales del agente. Añade el ciclo externo de
+queue, polling, recuperación de interrupciones y retry mediante runs nuevos.
 
 `result_payload` conserva la recomendación validada y puede añadir referencias
 resumidas a la cotización y los artefactos. El contenido completo permanece en

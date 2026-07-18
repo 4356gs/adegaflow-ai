@@ -75,6 +75,15 @@ válidos continúen a `persisting_actions`. Después de crear CRM simulado,
 seguimiento y memoria, el run sigue terminando `needs_review`; las acciones
 internas no aprueban los artefactos.
 
+Sprint 2 Bloque 8 no modifica el camino funcional. Añade un límite HTTP que
+persiste el run en `queued`, lo entrega a un dispatcher local con un solo
+consumidor y permite observar estados y eventos mediante polling.
+
+Un reinicio no reanuda automáticamente trabajo activo. Los runs `queued` o
+`running` heredados del proceso anterior terminan `failed` con
+`RUN_INTERRUPTED`. Un retry permitido crea otro run para la misma inquiry y
+conserva el intento original mediante `retry_of_run_id`.
+
 ## Flujo detallado
 
 ### 1. Ingesta
@@ -447,6 +456,33 @@ No existe tool de envío real.
 6. **Rondas agotadas:** `needs_review` con resultados parciales.
 7. **Tools agotadas:** `needs_review`; no se ejecutan llamadas adicionales.
 8. **Persistencia fallida:** rollback y error seguro.
+
+## Límite de ejecución HTTP del Bloque 8
+
+```mermaid
+sequenceDiagram
+    participant C as HTTP client
+    participant A as FastAPI
+    participant D as Dispatcher
+    participant O as Orchestrator
+    participant DB as SQLite
+
+    C->>A: POST inquiry run
+    A->>DB: Persist queued run
+    A->>D: Enqueue run ID
+    A-->>C: 202 Accepted
+    D->>O: Execute with new session
+    O->>DB: Persist states and events
+    loop Poll
+        C->>A: GET run or events
+        A->>DB: Read persisted state
+        A-->>C: Status and events
+    end
+```
+
+La cola local controla concurrencia, pero no sustituye persistencia. El
+orquestador sigue siendo la única autoridad sobre pasos, eventos funcionales y
+resultado terminal.
 
 ## Lo que no se almacenará
 

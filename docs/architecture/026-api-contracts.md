@@ -10,6 +10,8 @@
 - Errores con estructura uniforme.
 - Modo demo sin autenticación completa.
 - El frontend accede a la API mediante proxy interno de Next.js.
+- Los comandos de creación requieren `Idempotency-Key`.
+- Los endpoints de producto no poseen alias sin versión.
 
 ## Respuesta de error
 
@@ -28,23 +30,18 @@
 
 ### `GET /health`
 
-Verifica proceso, base de datos y configuración no sensible.
+Verifica proceso y configuración no sensible. Es la única ruta pública sin
+prefijo `/api/v1`.
 
 ```json
 {
   "status": "ok",
-  "database": "ok",
+  "service": "AdegaFlow AI API",
+  "version": "0.1.0",
+  "environment": "development",
   "qwen_configured": true
 }
 ```
-
-### `POST /demo/reset`
-
-Restaura datos semilla. Solo disponible con `DEMO_MODE=true`.
-
-### `GET /demo/scenarios`
-
-Devuelve escenarios predefinidos.
 
 ### `GET /inquiries`
 
@@ -56,18 +53,22 @@ Parámetros:
 - `limit`;
 - `offset`.
 
+El orden es estable por `received_at DESC, id DESC`. `limit` no puede superar
+100.
+
 ### `POST /inquiries`
 
 Crea una consulta.
+
+Requiere `Idempotency-Key`. Una repetición equivalente devuelve la inquiry
+existente; reutilizar la clave con otro contenido devuelve
+`IDEMPOTENCY_CONFLICT`.
 
 ```json
 {
   "source": "manual",
   "raw_message": "We are looking for...",
-  "customer_hint": {
-    "company_name": "Rhein Selection GmbH",
-    "country_code": "DE"
-  }
+  "customer_id": null
 }
 ```
 
@@ -98,6 +99,14 @@ Crea una ejecución y responde `202`.
 
 El trabajo se ejecutará en segundo plano dentro del proceso FastAPI. No se añade una cola distribuida en el MVP.
 
+El run y su evento inicial se confirman antes de responder. Repetir la misma
+`Idempotency-Key` devuelve el run existente y no lo encola de nuevo.
+
+### `GET /agent-runs`
+
+Lista runs resumidos para la futura bandeja. Admite filtros por `status` e
+`inquiry_id`, además de paginación acotada.
+
 ### `GET /agent-runs/{agent_run_id}`
 
 Devuelve:
@@ -110,9 +119,13 @@ Devuelve:
 - errores seguros;
 - IDs de oportunidad y artefactos cuando existan.
 
+También devuelve `retryable`, `retry_of_run_id`, última secuencia de evento y
+URLs relativas para polling y resultado.
+
 ### `GET /agent-runs/{agent_run_id}/events`
 
-Devuelve eventos ordenados para polling.
+Devuelve eventos ordenados para polling. Acepta `after_sequence` y `limit` para
+evitar retransmitir la línea de tiempo completa.
 
 ```json
 {
@@ -134,6 +147,24 @@ Devuelve eventos ordenados para polling.
 
 Permite reintento controlado si el run terminó en fallo recuperable.
 
+Requiere `Idempotency-Key`. Crea un nuevo run con `retry_of_run_id`; nunca
+reinicia ni sobrescribe el intento original. Un run que terminó correctamente
+en revisión humana no es retryable.
+
+### `GET /agent-runs/{agent_run_id}/result`
+
+Devuelve el read model comercial tipado para un run terminal:
+
+- inquiry y análisis;
+- recomendación;
+- quote e items;
+- propuesta y email draft;
+- customer, oportunidad y follow-up;
+- resumen de memoria;
+- warnings y resultados parciales.
+
+Mientras el run está activo devuelve `RUN_NOT_TERMINAL`.
+
 ### `GET /opportunities/{opportunity_id}`
 
 Incluye cliente, consulta, prioridad, cotización, artefactos y seguimiento.
@@ -142,49 +173,41 @@ Incluye cliente, consulta, prioridad, cotización, artefactos y seguimiento.
 
 Devuelve memorias activas.
 
-### `POST /artifacts/{artifact_id}/review`
-
-Marca revisión conceptual:
-
-```json
-{
-  "decision": "approved",
-  "notes": "Demo approval only."
-}
-```
-
-No envía correo ni cambia sistemas externos.
-
 ## Modelo de ejecución asíncrona
 
 ```mermaid
 sequenceDiagram
     participant W as Web
     participant A as FastAPI
-    participant B as Background task
+    participant B as Local dispatcher
     participant DB as SQLite
 
     W->>A: POST /inquiries/{id}/agent-runs
     A->>DB: Create run=queued
     A-->>W: 202 + run_id
-    A->>B: Start run
+    A->>B: Enqueue run_id
     loop Poll
         W->>A: GET /agent-runs/{id}/events
         A->>DB: Read events
         A-->>W: Ordered events
     end
-    B->>DB: Persist result
+    B->>DB: Persist states and result
     W->>A: GET /opportunities/{id}
     A-->>W: Complete result
 ```
 
 ## Limitación aceptada
 
-El procesador en segundo plano no es durable frente a reinicios. Para el MVP:
+El dispatcher usa una cola local acotada y un solo consumidor. No es durable
+frente a reinicios. Para el MVP:
 
 - un único worker;
 - runs persistidos paso a paso;
-- reintento manual;
+- runs interrumpidos cerrados como `RUN_INTERRUPTED`;
+- reintento manual mediante un run nuevo;
 - no se introduce Celery, Redis ni otra cola.
 
 Una cola durable será requisito de producto futuro, no del hackathon.
+
+La aprobación o edición de artefactos, los endpoints de reset y las acciones
+externas permanecen fuera del Bloque 8.

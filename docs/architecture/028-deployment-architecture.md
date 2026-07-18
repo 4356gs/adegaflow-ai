@@ -39,6 +39,8 @@ flowchart TB
 - usa un único worker para compatibilidad con el procesador in-process y SQLite;
 - monta volumen persistente;
 - consume Qwen Cloud mediante HTTPS.
+- inicia un dispatcher local con un solo consumidor;
+- no debe ejecutarse con más de un worker Uvicorn durante el MVP.
 
 ## Variables de entorno
 
@@ -94,6 +96,9 @@ El repositorio deberá incluir:
 - sin TLS si no hay dominio disponible;
 - backups manuales del volumen;
 - despliegue por SSH/documentación, no CI/CD complejo.
+- runs activos al reiniciar se cierran como `RUN_INTERRUPTED` y requieren retry
+  explícito;
+- la cola local no proporciona durabilidad ni alta disponibilidad.
 
 ## Ruta futura
 

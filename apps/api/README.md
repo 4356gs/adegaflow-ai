@@ -81,6 +81,11 @@ The three internal actions use canonical fingerprints and persistent receipts,
 and commit atomically with their audit trail and terminal run state. HTTP
 orchestration endpoints remain deferred to Block 8.
 
+The approved Block 8 contract will add idempotent inquiry/run commands, polling,
+terminal result reads and explicit retry through a one-consumer local
+dispatcher. Those endpoints are documented but not yet implemented. Artifact
+approval, frontend and external actions remain outside the block.
+
 ## Quality
 
 ```bash
