@@ -186,7 +186,12 @@ class BoundedRecommendationOrchestrator:
         self.registry = ToolRegistry(session, self.run_repository)
         self.validator = RecommendationValidationService()
 
-    def run(self, inquiry_id: UUID | str) -> OrchestrationResult:
+    def run(
+        self,
+        inquiry_id: UUID | str,
+        *,
+        run_id: str | None = None,
+    ) -> OrchestrationResult:
         """Run the bounded workflow and persist one terminal state."""
 
         normalized_id = str(inquiry_id)
@@ -199,28 +204,42 @@ class BoundedRecommendationOrchestrator:
 
         raw_message = inquiry.raw_message
         customer_id = inquiry.customer_id
-        run = self.run_repository.create_run(
-            inquiry_id=normalized_id,
-            model=self.model,
-            prompt_versions={
-                "inquiry_analysis": INQUIRY_ANALYSIS_PROMPT_VERSION,
-                "product_recommendation": (
-                    PRODUCT_RECOMMENDATION_PROMPT_VERSION
-                ),
-                "proposal_writer": PROPOSAL_WRITER_PROMPT_VERSION,
-                "email_writer": EMAIL_WRITER_PROMPT_VERSION,
-            },
-        )
-        self.run_repository.append_event(
-            run=run,
-            event_type="run_created",
-            step=AgentRunStep.QUEUED,
-            payload={
-                "max_model_rounds": self.max_model_rounds,
-                "max_tool_executions": self.max_tool_executions,
-            },
-        )
-        self.session.commit()
+        if run_id is None:
+            run = self.run_repository.create_run(
+                inquiry_id=normalized_id,
+                model=self.model,
+                prompt_versions={
+                    "inquiry_analysis": INQUIRY_ANALYSIS_PROMPT_VERSION,
+                    "product_recommendation": (
+                        PRODUCT_RECOMMENDATION_PROMPT_VERSION
+                    ),
+                    "proposal_writer": PROPOSAL_WRITER_PROMPT_VERSION,
+                    "email_writer": EMAIL_WRITER_PROMPT_VERSION,
+                },
+            )
+            self.run_repository.append_event(
+                run=run,
+                event_type="run_created",
+                step=AgentRunStep.QUEUED,
+                payload={
+                    "max_model_rounds": self.max_model_rounds,
+                    "max_tool_executions": self.max_tool_executions,
+                },
+            )
+            self.session.commit()
+        else:
+            existing_run = self.run_repository.get_by_id(run_id)
+            if existing_run is None or existing_run.inquiry_id != normalized_id:
+                raise OrchestrationError(
+                    code="RUN_NOT_FOUND",
+                    message="The queued agent run does not exist.",
+                )
+            if existing_run.status != AgentRunStatus.QUEUED.value:
+                raise OrchestrationError(
+                    code="RUN_ALREADY_ACTIVE",
+                    message="The agent run is not queued for execution.",
+                )
+            run = existing_run
 
         budget = _RunBudget()
         run_id = run.id

@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     qwen_fallback_model: str = Field(default="qwen3.6-flash", alias="QWEN_FALLBACK_MODEL")
     qwen_timeout_seconds: PositiveInt = Field(default=30, alias="QWEN_TIMEOUT_SECONDS")
     qwen_max_retries: int = Field(default=2, ge=0, le=5, alias="QWEN_MAX_RETRIES")
+    async_run_queue_capacity: int = Field(
+        default=10, ge=1, le=100, alias="ASYNC_RUN_QUEUE_CAPACITY"
+    )
 
     @property
     def qwen_configured(self) -> bool:

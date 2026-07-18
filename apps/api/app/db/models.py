@@ -164,6 +164,7 @@ class Inquiry(Base):
     __tablename__ = "inquiries"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    submission_key: Mapped[str | None] = mapped_column(String(160), nullable=True, unique=True)
     customer_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("customers.id", ondelete="SET NULL"),
@@ -324,6 +325,13 @@ class AgentRun(Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    request_key: Mapped[str | None] = mapped_column(String(160), nullable=True, unique=True)
+    retry_of_run_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("agent_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     inquiry_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("inquiries.id", ondelete="CASCADE"),

@@ -116,9 +116,27 @@ Block 8 was planned from `main` at `644d12f` without changing product code.
 | mypy strict | Passed, 48 source files |
 | pytest excluding live Qwen | Passed, 102 tests |
 
-The implementation and its validation evidence remain pending. The Block 7
-quality baseline is unchanged. The known non-blocking Starlette TestClient
-warning remains unchanged.
+## HTTP API and asynchronous execution — Block 8
+
+Block 8 was implemented from `ffdf2eae` on
+`feat/sprint2-async-run-api`.
+
+| Check | Result |
+|---|---|
+| Alembic `base → 0005 → 0004 → 0005` | Passed on SQLite |
+| Persistent HTTP idempotency | Inquiry, run and retry commands verified |
+| Dispatcher | Bounded FIFO queue, one consumer and independent worker sessions |
+| Restart recovery | Active runs and started tools close with `RUN_INTERRUPTED` |
+| Retry | New linked run; original remains immutable |
+| Route boundary | Product endpoints only under `/api/v1`; health only at `/health` |
+| OpenAPI | Required paths, schemas and error responses verified |
+| Ruff | Passed |
+| mypy strict | Passed, 53 source files |
+| pytest excluding live Qwen | Passed, 114 tests |
+| Total coverage | 90% |
+| Frontend, approvals, external actions and durable queue | Not implemented |
+
+The known non-blocking Starlette TestClient warning remains unchanged.
 
 ## Current target-repository verification
 
@@ -126,5 +144,6 @@ warning remains unchanged.
 make check-api
 ```
 
-The latest combined verification passed on the Block 7 implementation branch.
-Docker behavior was not changed by Block 7.
+The latest combined verification passed on the Block 8 implementation branch.
+Docker remains fixed to one Uvicorn worker and now exposes the bounded queue
+capacity setting.

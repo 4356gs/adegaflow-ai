@@ -17,6 +17,7 @@ services:
       QWEN_FALLBACK_MODEL: ${QWEN_FALLBACK_MODEL:-qwen3.6-flash}
       QWEN_TIMEOUT_SECONDS: ${QWEN_TIMEOUT_SECONDS:-30}
       QWEN_MAX_RETRIES: ${QWEN_MAX_RETRIES:-2}
+      ASYNC_RUN_QUEUE_CAPACITY: ${ASYNC_RUN_QUEUE_CAPACITY:-10}
     volumes:
       - adegaflow-data:/app/runtime
       - ./data/seeds:/app/data/seeds:ro

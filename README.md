@@ -15,8 +15,8 @@ Autonomous commercial opportunity agent for Galician wineries, built for the Qwe
 - Sprint 2 Block 5 — Bounded orchestration and recommendation: **implemented**
 - Sprint 2 Block 6 — Deterministic quote and reviewable artifacts: **implemented**
 - Sprint 2 Block 7 — Deterministic internal actions: **implemented**
-- Sprint 2 Block 8 — HTTP API and asynchronous execution: **documentation approved**
-- Next block — Sprint 2 Block 8 implementation
+- Sprint 2 Block 8 — HTTP API and asynchronous execution: **implemented**
+- Next block — Sprint 2 Block 8 review, PR and merge
 
 The frontend remains intentionally deferred until the backend contract and critical acceptance scenarios are stable.
 
@@ -49,16 +49,16 @@ Open:
 - API health: `http://localhost:8000/health`
 - OpenAPI: `http://localhost:8000/docs`
 
-The read tools, structured inquiry-analysis service, bounded recommendation
-orchestrator, deterministic quote service and reviewable artifact services are
-currently application services. Successful runs also create an idempotent CRM
-opportunity, seven-day follow-up and explicit customer memory in one SQLite
-transaction. HTTP endpoints remain deferred to Sprint 2 Block 8.
+The backend is invocable under `/api/v1`: clients can submit and inspect
+inquiries, create asynchronous agent runs, poll state and ordered events, read
+terminal commercial results and explicitly retry recoverable failures. POST
+commands use persistent idempotency keys.
 
-The approved Block 8 design uses versioned REST endpoints, persistent HTTP
-idempotency, polling and a single-consumer in-process dispatcher. Implementation
-has not started. Frontend, artifact approval and external actions remain
-deferred.
+The local dispatcher has one bounded in-process queue and exactly one consumer.
+It is intentionally non-durable: process restarts close interrupted work with
+`RUN_INTERRUPTED`, after which a client may create an audited retry run. Run the
+MVP with one Uvicorn worker. Frontend, artifact approval and external actions
+remain deferred.
 
 ## Database operations
 
