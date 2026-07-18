@@ -38,12 +38,16 @@ class AgentRunRepository:
         prompt_versions: JsonPayload,
         run_id: str | None = None,
         correlation_id: str | None = None,
+        request_key: str | None = None,
+        retry_of_run_id: str | None = None,
     ) -> AgentRun:
         if self._session.get(Inquiry, inquiry_id) is None:
             raise LookupError("Inquiry does not exist.")
 
         run = AgentRun(
             id=run_id or str(uuid4()),
+            request_key=request_key,
+            retry_of_run_id=retry_of_run_id,
             inquiry_id=inquiry_id,
             correlation_id=correlation_id or str(uuid4()),
             status=AgentRunStatus.QUEUED.value,
@@ -58,6 +62,33 @@ class AgentRunRepository:
 
     def get_by_id(self, run_id: str) -> AgentRun | None:
         return self._session.get(AgentRun, run_id)
+
+    def get_by_request_key(self, request_key: str) -> AgentRun | None:
+        return self._session.scalar(select(AgentRun).where(AgentRun.request_key == request_key))
+
+    def list_runs(
+        self,
+        *,
+        status: AgentRunStatus | None = None,
+        inquiry_id: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[AgentRun]:
+        statement = select(AgentRun).order_by(AgentRun.started_at.desc(), AgentRun.id.desc())
+        if status is not None:
+            statement = statement.where(AgentRun.status == status.value)
+        if inquiry_id is not None:
+            statement = statement.where(AgentRun.inquiry_id == inquiry_id)
+        return list(self._session.scalars(statement.offset(offset).limit(limit)))
+
+    def list_active(self) -> list[AgentRun]:
+        return list(
+            self._session.scalars(
+                select(AgentRun).where(
+                    AgentRun.status.in_([AgentRunStatus.QUEUED.value, AgentRunStatus.RUNNING.value])
+                )
+            )
+        )
 
     def set_step(self, run: AgentRun, step: AgentRunStep) -> None:
         run.current_step = step.value
@@ -121,9 +152,7 @@ class AgentRunRepository:
         error_code: str | None = None,
     ) -> None:
         if status is ToolExecutionStatus.STARTED:
-            raise ValueError(
-                "A completed tool execution cannot remain started."
-            )
+            raise ValueError("A completed tool execution cannot remain started.")
         if duration_ms < 0:
             raise ValueError("duration_ms must be non-negative.")
 
@@ -173,13 +202,52 @@ class AgentRunRepository:
         run.error_code = error_code
         run.error_message_safe = message_safe[:500]
 
-    def list_events(self, run_id: str) -> list[AgentRunEvent]:
+    def list_events(
+        self, run_id: str, *, after_sequence: int = 0, limit: int | None = None
+    ) -> list[AgentRunEvent]:
         statement = (
             select(AgentRunEvent)
-            .where(AgentRunEvent.agent_run_id == run_id)
+            .where(
+                AgentRunEvent.agent_run_id == run_id,
+                AgentRunEvent.sequence > after_sequence,
+            )
             .order_by(AgentRunEvent.sequence)
         )
+        if limit is not None:
+            statement = statement.limit(limit)
         return list(self._session.scalars(statement))
+
+    def last_event_sequence(self, run_id: str) -> int:
+        value = self._session.scalar(
+            select(func.max(AgentRunEvent.sequence)).where(AgentRunEvent.agent_run_id == run_id)
+        )
+        return int(value or 0)
+
+    def interrupt_active_runs(self) -> list[str]:
+        interrupted: list[str] = []
+        for run in self.list_active():
+            for execution in self.list_tool_executions(run.id):
+                if execution.status == ToolExecutionStatus.STARTED.value:
+                    self.finish_tool_execution(
+                        execution,
+                        status=ToolExecutionStatus.FAILED,
+                        output_payload={},
+                        duration_ms=execution.duration_ms,
+                        error_code="RUN_INTERRUPTED",
+                    )
+            self.fail_run(
+                run,
+                error_code="RUN_INTERRUPTED",
+                message_safe="The agent run was interrupted by a process restart.",
+            )
+            self.append_event(
+                run=run,
+                event_type="run_interrupted",
+                step=AgentRunStep.FAILED,
+                payload={"error_code": "RUN_INTERRUPTED"},
+            )
+            interrupted.append(run.id)
+        return interrupted
 
     def list_tool_executions(
         self,

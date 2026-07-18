@@ -44,7 +44,16 @@ make run-api
 Endpoints currently exposed:
 
 - `GET /health`
-- `GET /api/v1/health`
+- `POST/GET /api/v1/inquiries`
+- `GET /api/v1/inquiries/{inquiry_id}`
+- `POST /api/v1/inquiries/{inquiry_id}/agent-runs`
+- `GET /api/v1/agent-runs`
+- `GET /api/v1/agent-runs/{agent_run_id}`
+- `GET /api/v1/agent-runs/{agent_run_id}/events`
+- `GET /api/v1/agent-runs/{agent_run_id}/result`
+- `POST /api/v1/agent-runs/{agent_run_id}/retry`
+- `GET /api/v1/opportunities/{opportunity_id}`
+- `GET /api/v1/customers/{customer_id}/memory`
 - OpenAPI: `/docs`
 
 The catalog, stock and customer-history tools are implemented as typed application services. They are not exposed through temporary HTTP endpoints because the approved architecture places them behind the later orchestrator and API contracts.
@@ -78,13 +87,15 @@ New runs can currently:
 - finish in `needs_review` with ordered events and summarized references.
 
 The three internal actions use canonical fingerprints and persistent receipts,
-and commit atomically with their audit trail and terminal run state. HTTP
-orchestration endpoints remain deferred to Block 8.
+and commit atomically with their audit trail and terminal run state. The HTTP
+layer persists a queued run before dispatch and never holds the request open
+while Qwen executes.
 
-The approved Block 8 contract will add idempotent inquiry/run commands, polling,
-terminal result reads and explicit retry through a one-consumer local
-dispatcher. Those endpoints are documented but not yet implemented. Artifact
-approval, frontend and external actions remain outside the block.
+`Idempotency-Key` is required for inquiry creation, run creation and retry.
+`ASYNC_RUN_QUEUE_CAPACITY` defaults to 10 and accepts values from 1 to 100. The
+dispatcher is local and non-durable, so this MVP must use exactly one Uvicorn
+worker. Artifact approval, frontend and external actions remain outside the
+block.
 
 ## Quality
 
@@ -96,6 +107,7 @@ make check-api
 
 - `DATABASE_URL` — defaults to `sqlite:///./data/adegaflow.db`
 - `DEMO_SEED_PATH` — defaults to `data/seeds/demo_seed.json`
+- `ASYNC_RUN_QUEUE_CAPACITY` — defaults to `10`, maximum `100`
 
 SQLite is the accepted MVP store. The repository layer isolates tool logic from direct engine access and preserves a future PostgreSQL migration path.
 

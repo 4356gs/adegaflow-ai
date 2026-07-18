@@ -41,6 +41,18 @@
   results and retry.
 - Acceptance scenarios for HTTP idempotency, process interruption, retry and
   route versioning.
+- Reversible `0005_http_async_runs` migration for inquiry submission keys, run
+  request keys and immutable retry lineage.
+- Strict `/api/v1` inquiry, run, event, result, opportunity and memory contracts
+  with uniform safe error envelopes and correlation IDs.
+- Bounded one-consumer local dispatcher that processes each run with an
+  independent SQLAlchemy session outside the HTTP request.
+- Startup recovery that closes interrupted runs and tool executions with
+  `RUN_INTERRUPTED` without automatically replaying external calls.
+- Closed retry policy that creates a new auditable run and preserves the
+  original attempt.
+- Contract, migration, dispatcher, recovery, idempotency and OpenAPI tests for
+  Sprint 2 Block 8.
 
 ### Changed
 
@@ -54,6 +66,8 @@
   preserving human review as the terminal state.
 - API contracts now keep product routes under `/api/v1`, use idempotent POST
   commands and exclude artifact approval from Block 8.
+- Container and local execution retain exactly one API worker; queue capacity is
+  configurable from 1 to 100 through `ASYNC_RUN_QUEUE_CAPACITY`.
 
 ## 0.1.0 — 2026-07-10
 
