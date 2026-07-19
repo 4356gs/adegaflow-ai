@@ -118,6 +118,10 @@ vinculantes.
 
 **Salida:** Sprint 2 candidato a cierre.
 
+**Plan vinculante:** `065-backend-verification-and-sprint-2-closeout.md`. No se
+implementarán pruebas, scripts de demo ni cambios de cierre hasta que ese plan
+sea revisado, aprobado y fusionado.
+
 ## Orden de commits recomendado
 
 1. `chore: bootstrap FastAPI service and quality tooling`
