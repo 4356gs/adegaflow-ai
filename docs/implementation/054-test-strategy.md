@@ -56,6 +56,11 @@ Cubren:
 
 No se ejecutan en CI por defecto porque consumen cuota y requieren secreto.
 
+El spike live S-01 a S-04 ya aprobado satisface el gate externo obligatorio del
+Sprint 2. Cualquier smoke test live añadido en el Bloque 9 será manual,
+opcional y no bloqueante; el cierre reproducible dependerá de la integración
+completa con Qwen mock.
+
 ### End-to-end backend
 
 Desde `POST /inquiries` hasta la oportunidad, propuesta, seguimiento y memoria.
@@ -108,7 +113,8 @@ mypy app
 - 100 % de reglas monetarias y de stock cubiertas.
 - Cobertura global objetivo: 80 % o superior.
 - Todos los escenarios P0 pasan.
-- Test live no bloquea CI, pero debe ejecutarse antes del cierre.
+- El spike live aprobado debe conservar evidencia; un smoke live del Bloque 9
+  no bloquea CI ni el cierre.
 - Ningún test depende del orden de ejecución.
 
 La cobertura es una señal, no sustituto de los casos de aceptación.
