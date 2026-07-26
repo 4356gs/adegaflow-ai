@@ -51,12 +51,13 @@ from app.db.models import (
     FollowUpTask,
     GeneratedArtifact,
     Inquiry,
+    InternalActionReceipt,
     Opportunity,
     Product,
     Quote,
     QuoteItem,
 )
-from app.domain.enums import AgentRunStatus, AgentRunStep, InquiryStatus
+from app.domain.enums import AgentRunStatus, AgentRunStep, InquiryStatus, InternalActionName
 from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.inquiries import InquiryRepository
 from app.repositories.quote_artifacts import GeneratedArtifactRepository, QuoteRepository
@@ -109,17 +110,38 @@ def _inquiry_summary(inquiry: Inquiry) -> InquirySummary:
     return InquirySummary.model_validate(inquiry)
 
 
+def _commercial_records(
+    session: Session, run_id: str
+) -> tuple[Opportunity | None, FollowUpTask | None]:
+    receipts = list(
+        session.scalars(
+            select(InternalActionReceipt).where(
+                InternalActionReceipt.agent_run_id == run_id,
+                InternalActionReceipt.action_name.in_(
+                    [
+                        InternalActionName.CREATE_CRM_OPPORTUNITY.value,
+                        InternalActionName.CREATE_FOLLOWUP_TASK.value,
+                    ]
+                ),
+            )
+        )
+    )
+    by_action = {item.action_name: item.result_payload for item in receipts}
+    opportunity_payload = by_action.get(InternalActionName.CREATE_CRM_OPPORTUNITY.value, {})
+    followup_payload = by_action.get(InternalActionName.CREATE_FOLLOWUP_TASK.value, {})
+    opportunity_id = opportunity_payload.get("opportunity_id")
+    followup_id = followup_payload.get("followup_task_id")
+    opportunity = (
+        session.get(Opportunity, opportunity_id) if isinstance(opportunity_id, str) else None
+    )
+    followup = session.get(FollowUpTask, followup_id) if isinstance(followup_id, str) else None
+    return opportunity, followup
+
+
 def _run_references(session: Session, run: AgentRun) -> RunReferences:
     quote = QuoteRepository(session).get_by_run_id(run.id)
     artifacts = GeneratedArtifactRepository(session).list_by_run(run.id)
-    opportunity = session.scalar(
-        select(Opportunity).where(Opportunity.inquiry_id == run.inquiry_id)
-    )
-    followup = None
-    if opportunity is not None:
-        followup = session.scalar(
-            select(FollowUpTask).where(FollowUpTask.opportunity_id == opportunity.id)
-        )
+    opportunity, followup = _commercial_records(session, run.id)
     return RunReferences(
         quote_id=UUID(quote.id) if quote else None,
         proposal_id=next(
@@ -530,18 +552,6 @@ def retry_agent_run(
     return _accepted(run)
 
 
-def _commercial_records(
-    session: Session, inquiry_id: str, run_id: str
-) -> tuple[Opportunity | None, FollowUpTask | None]:
-    opportunity = session.scalar(select(Opportunity).where(Opportunity.inquiry_id == inquiry_id))
-    followup = None
-    if opportunity is not None:
-        followup = session.scalar(
-            select(FollowUpTask).where(FollowUpTask.opportunity_id == opportunity.id)
-        )
-    return opportunity, followup
-
-
 @router.get(
     "/agent-runs/{agent_run_id}/result",
     response_model=RunResult,
@@ -560,7 +570,7 @@ def get_agent_run_result(agent_run_id: UUID, session: SessionDep) -> RunResult:
     quote = QuoteRepository(session).get_by_run_id(run.id)
     artifacts = GeneratedArtifactRepository(session).list_by_run(run.id)
     customer = session.get(Customer, inquiry.customer_id) if inquiry.customer_id else None
-    opportunity, followup = _commercial_records(session, inquiry.id, run.id)
+    opportunity, followup = _commercial_records(session, run.id)
     memories = []
     if customer is not None:
         memories = list(

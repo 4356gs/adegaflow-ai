@@ -103,6 +103,21 @@ block.
 make check-api
 ```
 
+Deterministic Block 9 demonstrations:
+
+```bash
+make demo-backend
+make demo-backend-retry
+```
+
+They run through HTTP and the real one-consumer dispatcher using a temporary
+SQLite database. Only the Qwen provider boundary is replaced. The live Qwen
+smoke remains manual and optional:
+
+```bash
+pytest apps/api/tests -m live_qwen -q
+```
+
 ## Persistence configuration
 
 - `DATABASE_URL` — defaults to `sqlite:///./data/adegaflow.db`

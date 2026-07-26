@@ -276,3 +276,136 @@ def test_openapi_has_only_documented_product_prefixes(
     assert "/api/v1/agent-runs/{agent_run_id}/retry" in paths
     assert "/api/v1/agent-runs/{agent_run_id}/result" in paths
     assert all(path == "/health" or path.startswith("/api/v1/") for path in paths)
+
+
+def test_openapi_requires_idempotency_header_on_all_commands(
+    api_client: tuple[TestClient, FakeDispatcher, Session],
+) -> None:
+    client, _, _ = api_client
+    schema = client.get("/openapi.json").json()
+    command_paths = [
+        ("/api/v1/inquiries", "post"),
+        ("/api/v1/inquiries/{inquiry_id}/agent-runs", "post"),
+        ("/api/v1/agent-runs/{agent_run_id}/retry", "post"),
+    ]
+
+    for path, method in command_paths:
+        parameters = schema["paths"][path][method]["parameters"]
+        header = next(item for item in parameters if item["name"] == "Idempotency-Key")
+        assert header["in"] == "header"
+        assert header["required"] is True
+
+
+def test_public_contract_rejects_extras_invalid_uuid_and_query_limits(
+    api_client: tuple[TestClient, FakeDispatcher, Session],
+) -> None:
+    client, _, _ = api_client
+
+    extra = client.post(
+        "/api/v1/inquiries",
+        json={"source": "demo", "raw_message": "Hello", "unexpected": True},
+        headers={"Idempotency-Key": "strict-extra"},
+    )
+    invalid_uuid = client.get("/api/v1/agent-runs/not-a-uuid")
+    invalid_limit = client.get("/api/v1/inquiries?limit=101")
+
+    assert [
+        extra.status_code,
+        invalid_uuid.status_code,
+        invalid_limit.status_code,
+    ] == [422, 422, 422]
+    assert all(
+        response.json()["error"]["code"] == "INVALID_INPUT"
+        for response in (extra, invalid_uuid, invalid_limit)
+    )
+
+
+def test_public_events_filter_secrets_and_raw_provider_payloads(
+    api_client: tuple[TestClient, FakeDispatcher, Session],
+) -> None:
+    client, _, session = api_client
+    repository = AgentRunRepository(session)
+    run = repository.create_run(
+        inquiry_id=INQUIRY_ID,
+        model="fake-qwen",
+        prompt_versions={},
+    )
+    repository.append_event(
+        run=run,
+        event_type="provider_failed",
+        step=AgentRunStep.FAILED,
+        payload={
+            "error_code": "QWEN_TIMEOUT",
+            "api_key": "secret",
+            "raw_response": {"private": True},
+            "contact_email": "buyer@example.invalid",
+        },
+    )
+    session.commit()
+
+    response = client.get(f"/api/v1/agent-runs/{run.id}/events")
+
+    assert response.status_code == 200
+    assert response.json()["events"][0]["payload"] == {"error_code": "QWEN_TIMEOUT"}
+    assert "secret" not in response.text
+    assert "buyer@example.invalid" not in response.text
+
+
+def test_event_cursor_has_no_gaps_or_duplicates(
+    api_client: tuple[TestClient, FakeDispatcher, Session],
+) -> None:
+    client, _, session = api_client
+    repository = AgentRunRepository(session)
+    run = repository.create_run(
+        inquiry_id=INQUIRY_ID,
+        model="fake-qwen",
+        prompt_versions={},
+    )
+    for index in range(5):
+        repository.append_event(
+            run=run,
+            event_type=f"event_{index}",
+            step=AgentRunStep.QUEUED,
+        )
+    session.commit()
+
+    first = client.get(f"/api/v1/agent-runs/{run.id}/events?limit=2").json()
+    second = client.get(
+        f"/api/v1/agent-runs/{run.id}/events?limit=2&after_sequence={first['last_sequence']}"
+    ).json()
+    third = client.get(
+        f"/api/v1/agent-runs/{run.id}/events?limit=2&after_sequence={second['last_sequence']}"
+    ).json()
+    sequences = [
+        item["sequence"]
+        for page in (first, second, third)
+        for item in page["events"]
+    ]
+
+    assert sequences == [1, 2, 3, 4, 5]
+
+
+def test_failed_run_does_not_borrow_commercial_actions_from_another_run(
+    api_client: tuple[TestClient, FakeDispatcher, Session],
+) -> None:
+    client, _, session = api_client
+    repository = AgentRunRepository(session)
+    run = repository.create_run(
+        inquiry_id=INQUIRY_ID,
+        model="fake-qwen",
+        prompt_versions={},
+    )
+    repository.fail_run(
+        run,
+        error_code="QWEN_TIMEOUT",
+        message_safe="Qwen Cloud did not respond before the timeout.",
+    )
+    session.commit()
+
+    detail = client.get(f"/api/v1/agent-runs/{run.id}").json()
+    result = client.get(f"/api/v1/agent-runs/{run.id}/result").json()
+
+    assert detail["references"]["opportunity_id"] is None
+    assert detail["references"]["followup_task_id"] is None
+    assert result["opportunity"] is None
+    assert result["followup"] is None

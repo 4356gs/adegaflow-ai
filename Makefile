@@ -1,4 +1,4 @@
-.PHONY: install-api run-api test-api lint-api format-api typecheck-api check-api docker-api qwen-spike db-upgrade db-downgrade db-reset seed-demo seed-demo-reset
+.PHONY: install-api run-api test-api lint-api format-api typecheck-api check-api docker-api qwen-spike db-upgrade db-downgrade db-reset seed-demo seed-demo-reset demo-backend demo-backend-retry
 
 install-api:
 	python -m pip install -e "./apps/api[dev]"
@@ -36,6 +36,12 @@ seed-demo:
 
 seed-demo-reset:
 	PYTHONPATH=apps/api python -m app.db.seed --reset
+
+demo-backend:
+	PYTHONPATH=apps/api python -m tests.backend_demo happy
+
+demo-backend-retry:
+	PYTHONPATH=apps/api python -m tests.backend_demo retry
 
 docker-api:
 	docker compose up --build api

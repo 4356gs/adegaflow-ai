@@ -53,6 +53,13 @@
   original attempt.
 - Contract, migration, dispatcher, recovery, idempotency and OpenAPI tests for
   Sprint 2 Block 8.
+- Complete inspectable Qwen provider mock for deterministic backend
+  verification without network or provider credentials.
+- End-to-end HTTP tests using the real application lifespan, one-consumer
+  dispatcher, services, repositories, SQLite and public read models.
+- Reproducible `demo-backend` and `demo-backend-retry` terminal runners.
+- Sprint 2 Block 9 AT/B9 traceability and verified closure-candidate evidence,
+  including Docker build, migration, seed, health and one-worker runtime checks.
 
 ### Changed
 
@@ -68,6 +75,12 @@
   commands and exclude artifact approval from Block 8.
 - Container and local execution retain exactly one API worker; queue capacity is
   configurable from 1 to 100 through `ASYNC_RUN_QUEUE_CAPACITY`.
+- The local dispatcher accepts an injected provider-client factory at its
+  existing provider boundary for deterministic integration verification.
+- OpenAPI marks `Idempotency-Key` as required for inquiry, run and retry POST
+  commands.
+- Commercial result references are resolved through the receipts owned by the
+  requested run, preserving retry-attempt isolation.
 
 ## 0.1.0 — 2026-07-10
 

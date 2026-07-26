@@ -16,7 +16,8 @@ Autonomous commercial opportunity agent for Galician wineries, built for the Qwe
 - Sprint 2 Block 6 — Deterministic quote and reviewable artifacts: **implemented**
 - Sprint 2 Block 7 — Deterministic internal actions: **implemented**
 - Sprint 2 Block 8 — HTTP API and asynchronous execution: **implemented**
-- Next block — Sprint 2 Block 8 review, PR and merge
+- Sprint 2 Block 9 — Backend verification and closeout: **verified**
+- Next gate — review, commit, PR, merge and clean `main` revalidation
 
 The frontend remains intentionally deferred until the backend contract and critical acceptance scenarios are stable.
 
@@ -59,6 +60,21 @@ It is intentionally non-durable: process restarts close interrupted work with
 `RUN_INTERRUPTED`, after which a client may create an audited retry run. Run the
 MVP with one Uvicorn worker. Frontend, artifact approval and external actions
 remain deferred.
+
+## Reproducible backend demos
+
+The mandatory closeout demonstrations use a complete Qwen provider mock and a
+temporary migrated SQLite database. They do not use network access or a Qwen
+API key:
+
+```bash
+make demo-backend
+make demo-backend-retry
+```
+
+The first command covers the happy path, idempotency, polling, expanded result,
+commercial-action counts and a second buyer session. The second covers a typed
+provider timeout, immutable original run and explicit retry.
 
 ## Database operations
 
