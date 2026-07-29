@@ -1,10 +1,13 @@
-# Sprint 2 — Backend verification and closure candidate
+# Sprint 2 — Backend verification and closure
 
-- **Date:** 2026-07-26
+- **Verification date:** 2026-07-26
+- **Closure date:** 2026-07-28
 - **Baseline:** `412543258ae3960a265141427ad27873dfce1fc7`
-- **Branch:** `test/sprint2-backend-closeout`
-- **Implementation commit:** pending
-- **Status:** verified closure candidate; review and merge pending
+- **Verification branch:** `test/sprint2-backend-closeout`
+- **Implementation commit:** `4c9e31a9775c8b229aba05d9a3b1d39bf26ad349`
+- **Lint compatibility commit:** `bbde41579a6d9b1cb0952df2f7822c2f95b755ae`
+- **Merge commit:** `3f518e67b5ca24f7749abe0f0783a25e05639783`
+- **Status:** closed; post-merge verification passed on `main`
 
 ## Outcome
 
@@ -154,8 +157,10 @@ B9-D01 was executed successfully on Ubuntu 24.04 under WSL 2 with Docker
 Desktop 4.83.0, Engine 29.6.2 and Compose 5.3.1. The container was removed
 cleanly after the verification.
 
-Sprint 2 must not be declared closed until the implementation is reviewed and
-merged, and `main` is reverified.
+PR #12 was reviewed and merged into `main`. On 2026-07-28, the complete
+quality suite, both backend demonstrations and the Docker gate were repeated
+successfully on the clean merge commit
+`3f518e67b5ca24f7749abe0f0783a25e05639783`. Sprint 2 is closed.
 
 ## Residual risks and exclusions
 
