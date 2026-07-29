@@ -2,9 +2,9 @@
 
 ## Convenciones
 
-- **P0:** imprescindible para la demo.
+- **P0:** imprescindible para el MVP demostrable y la validación.
 - **P1:** importante si no compromete P0.
-- **P2:** posterior al hackathon.
+- **P2:** posterior a evidencia comercial suficiente.
 - **SP:** estimación preliminar relativa; debe revisarse tras la arquitectura.
 
 ## Epic E0 — Gobierno y definición
@@ -15,7 +15,7 @@
 | AF-002 | Congelar alcance y exclusiones del MVP | P0 | 1 | 0 |
 | AF-003 | Definir caso de uso principal | P0 | 1 | 0 |
 | AF-004 | Definir criterios de éxito y riesgos | P0 | 1 | 0 |
-| AF-005 | Validar reglas y categoría oficial del hackathon | P0 | 2 | 1 |
+| AF-005 | Validar reglas y categoría oficial del hackathon — cerrado históricamente | — | 2 | 1 |
 
 ## Epic E1 — Arquitectura y contratos
 
@@ -84,8 +84,8 @@
 | AF-067 | Mostrar propuesta y borrador | P0 | 5 | 3 |
 | AF-068 | Mostrar registro CRM y seguimiento | P0 | 3 | 3 |
 | AF-069 | Mostrar memoria recuperada y guardada | P0 | 3 | 3 |
-| AF-070 | Añadir panel de métricas simuladas | P1 | 3 | 3 |
-| AF-071 | Exportar propuesta a PDF | P1 | 5 | 3 |
+| AF-070 | Añadir panel de métricas simuladas | P2 | 3 | Futuro |
+| AF-071 | Exportar propuesta a PDF | P2 | 5 | Futuro |
 
 ## Epic E5A — API del flujo principal
 
@@ -107,33 +107,36 @@
 | AF-082 | Pruebas de fallos de modelo y tools | P0 | 3 | 3 |
 | AF-083 | Configurar Docker y Docker Compose | P0 | 3 | 3 |
 | AF-084 | Configurar variables de entorno y secret scanning | P0 | 2 | 3 |
-| AF-085 | Preparar README reproducible | P0 | 3 | 4 |
-| AF-086 | Preparar guion de demo | P0 | 3 | 4 |
-| AF-087 | Grabar video | P0 | 5 | 4 |
-| AF-088 | Preparar presentación y capturas | P0 | 3 | 4 |
-| AF-089 | Completar submission | P0 | 3 | 4 |
+| AF-085 | Preparar README reproducible | P0 | 3 | 3 |
+| AF-086 | Preparar guion de demostración comercial | P0 | 3 | 4 |
+| AF-087 | Preparar despliegue controlado | P0 | 5 | 4 |
+| AF-088 | Preparar capturas y material comercial mínimo | P0 | 3 | 4 |
+| AF-089 | Diseñar captura estructurada de feedback | P0 | 3 | 4 |
 
-## Epic E7 — Post-hackathon
+## Epic E7 — Validación y decisión de inversión
 
 | ID | Historia / tarea | Pri. | SP | Sprint |
 |---|---|---:|---:|---:|
-| AF-100 | Validar con bodegas reales | P2 | — | Futuro |
+| AF-100 | Realizar 5–10 demostraciones con empresas relevantes | P0 | — | Validación |
 | AF-101 | Diseñar multitenencia | P2 | — | Futuro |
 | AF-102 | Integrar CRM real | P2 | — | Futuro |
 | AF-103 | Integrar correo real con aprobación | P2 | — | Futuro |
-| AF-104 | Evaluar SaaS y modelo comercial | P2 | — | Futuro |
+| AF-104 | Evaluar SaaS y modelo comercial con evidencia | P2 | — | Futuro |
 | AF-105 | Evaluar adaptación a otros subsectores | P2 | — | Futuro |
+| AF-106 | Registrar reconocimiento del problema y objeciones | P0 | — | Validación |
+| AF-107 | Obtener al menos dos segundas conversaciones o interés en piloto | P0 | — | Validación |
+| AF-108 | Obtener una conversación sobre precio, datos o condiciones | P0 | — | Validación |
+| AF-109 | Decidir continuar, iterar, cambiar segmento o detener | P0 | — | Validación |
 
 ## Orden de ejecución recomendado
 
-1. Validar hackathon y Qwen Cloud.
-2. Cerrar arquitectura y contratos.
-3. Construir datos y tools.
-4. Completar el flujo backend.
-5. Probar el flujo.
-6. Construir la interfaz.
-7. Congelar funciones.
-8. Preparar demo y submission.
+1. Mantener cerrado el backend de Sprint 2.
+2. Aprobar documentación de Sprint 3.
+3. Construir la experiencia frontend.
+4. Verificar el flujo completo.
+5. Preparar despliegue y demostración comercial.
+6. Ejecutar validación con empresas relevantes.
+7. Decidir inversión con evidencia.
 
 ## Política de backlog
 

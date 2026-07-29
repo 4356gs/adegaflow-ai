@@ -1,6 +1,7 @@
 # AdegaFlow AI
 
-Autonomous commercial opportunity agent for Galician wineries, built for the Qwen Cloud Hackathon.
+AI-assisted commercial opportunity workflow for Galician wineries, being
+developed as an MVP for customer demonstrations and commercial validation.
 
 ## Current status
 
@@ -17,9 +18,12 @@ Autonomous commercial opportunity agent for Galician wineries, built for the Qwe
 - Sprint 2 Block 7 — Deterministic internal actions: **implemented**
 - Sprint 2 Block 8 — HTTP API and asynchronous execution: **implemented**
 - Sprint 2 Block 9 — Backend verification and closeout: **verified**
-- Next gate — review, commit, PR, merge and clean `main` revalidation
+- Sprint 2 — **closed on `main`**
+- Sprint 3 — frontend experience: **documentation approved; implementation not started**
 
-The frontend remains intentionally deferred until the backend contract and critical acceptance scenarios are stable.
+The backend contract and critical acceptance scenarios are stable. Sprint 3
+will turn UC-001 into a customer-facing, end-to-end web demonstration after its
+approved documentation is merged.
 
 ## Architecture baseline
 
@@ -30,7 +34,7 @@ The frontend remains intentionally deferred until the backend contract and criti
 - OpenAI-compatible Chat Completions
 - SQLite + SQLAlchemy 2.0 + Alembic
 - Docker Compose
-- Alibaba Cloud ECS — deployment target
+- Controlled deployment — planned for commercial-validation preparation
 
 ## Quick start
 
@@ -108,16 +112,19 @@ SQLite runtime data is stored in the named volume `adegaflow-data`. Demo seed fi
 ## Repository
 
 ```text
-apps/api/                 FastAPI service, persistence, prompts and tools
-scripts/qwen_spike/       External integration gate
-docs/                    Product, architecture, ADR, hackathon, implementation
-data/seeds/              Reproducible fictitious demo dataset
-infra/                   Reserved for Alibaba Cloud deployment
+apps/api/            FastAPI service, persistence, prompts and tools
+scripts/qwen_spike/  External integration gate
+docs/               Product, architecture, ADR and implementation source of truth
+docs/hackathon/     Historical competition material; not current direction
+data/seeds/         Reproducible fictitious demo dataset
+infra/              Reserved for controlled deployment work
 ```
 
 ## Governance
 
-The documentation under `docs/` is the source of truth. No frontend work starts until the backend gate defined in the Sprint 2 Definition of Done is met.
+The documentation under `docs/` is the source of truth. Sprint 2 is closed.
+Sprint 3 implementation does not start until its charter, frontend architecture,
+implementation plan and Definition of Done are approved and merged.
 
 ## License
 

@@ -291,6 +291,7 @@ La UI mostrará:
 - si puede reintentarse;
 - resultados parciales;
 - tools ejecutadas;
+- nombre público de la tool cuando el evento lo incluya;
 - reglas de validación relevantes;
 - correlation ID;
 - botón de reintento cuando proceda.
@@ -305,6 +306,9 @@ No mostrará:
 - cadena de pensamiento;
 - credenciales;
 - payloads técnicos sin resumir.
+
+El nombre público de la tool no autoriza a exponer argumentos, resultados
+completos ni payloads del proveedor.
 
 ## Fuera de alcance
 

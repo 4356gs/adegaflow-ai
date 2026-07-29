@@ -78,4 +78,5 @@ Sus expectativas son:
 
 ## Decisión de diseño de producto
 
-La interfaz se optimizará para el responsable comercial. No se diseñarán portales separados para cada actor durante el hackathon.
+La interfaz se optimizará para el responsable comercial. No se diseñarán
+portales separados para cada actor antes de validar la demanda del MVP.

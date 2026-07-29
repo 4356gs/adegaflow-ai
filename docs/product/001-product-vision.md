@@ -31,7 +31,7 @@ Una aplicación empresarial ligera que:
 - un ERP;
 - una plataforma de comercio exterior;
 - un sistema autónomo que envíe comunicaciones o comprometa condiciones comerciales sin revisión humana;
-- una plataforma multivertical durante el hackathon.
+- una plataforma multivertical antes de validar demanda en el segmento inicial.
 
 ## Principios de producto
 
@@ -40,16 +40,20 @@ Una aplicación empresarial ligera que:
 3. **Autonomía controlada.** El agente planifica y ejecuta, pero las acciones sensibles quedan en borrador o simulación.
 4. **Trazabilidad antes que opacidad.** El usuario debe comprender qué hizo el agente, con qué datos y con qué herramientas.
 5. **Realismo antes que espectacularidad.** Los datos pueden ser ficticios, pero deben ser verosímiles y coherentes.
-6. **Simplicidad técnica.** No se introduce infraestructura que no aumente directamente la calidad de la demo.
+6. **Simplicidad técnica.** No se introduce infraestructura que no aumente
+   directamente la calidad del MVP o de la validación comercial.
 7. **Separación estricta de Atlas.** No se comparte código, repositorio, base de datos, identidad ni decisiones automáticas.
 
-## Resultado de largo plazo
+## Dirección de largo plazo
 
-Tras el hackathon, AdegaFlow AI podrá evaluarse como:
+Después de validar problema, adopción y disposición a avanzar, AdegaFlow AI
+podrá evaluarse como:
 
 - servicio de automatización comercial para bodegas;
 - producto SaaS vertical;
 - demostrador de consultoría;
 - base reutilizable para otros subsectores agroalimentarios.
 
-Esta evolución no forma parte del MVP.
+Esta evolución no forma parte del MVP actual. La dirección vigente y sus
+criterios de decisión están en
+`docs/product/012-commercial-validation-direction.md`.

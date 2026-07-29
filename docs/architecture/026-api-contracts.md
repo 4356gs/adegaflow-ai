@@ -143,6 +143,11 @@ evitar retransmitir la línea de tiempo completa.
 }
 ```
 
+Para eventos de tools, el payload público puede incluir `tool_name`. El nombre
+permite que el frontend identifique `search_catalog`, `check_stock`,
+`get_product_details` o `retrieve_customer_history`. Argumentos, respuestas
+completas, secretos y datos personales continúan filtrados.
+
 ### `POST /agent-runs/{agent_run_id}/retry`
 
 Permite reintento controlado si el run terminó en fallo recuperable.
@@ -207,7 +212,8 @@ frente a reinicios. Para el MVP:
 - reintento manual mediante un run nuevo;
 - no se introduce Celery, Redis ni otra cola.
 
-Una cola durable será requisito de producto futuro, no del hackathon.
+Una cola durable será requisito de una fase operativa futura, no del MVP de
+validación.
 
 La aprobación o edición de artefactos, los endpoints de reset y las acciones
 externas permanecen fuera del Bloque 8.

@@ -1,6 +1,6 @@
 # Exclusiones
 
-## Fuera del MVP del hackathon
+## Fuera del MVP de validación comercial
 
 ### Sistemas empresariales completos
 
