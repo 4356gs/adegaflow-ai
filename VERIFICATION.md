@@ -138,7 +138,7 @@ Block 8 was implemented from `ffdf2eae` on
 
 The known non-blocking Starlette TestClient warning remains unchanged.
 
-## Backend verification and Sprint 2 closeout candidate — Block 9
+## Backend verification and Sprint 2 closure — Block 9
 
 Block 9 was reconstructed from baseline
 `412543258ae3960a265141427ad27873dfce1fc7` on
@@ -169,8 +169,10 @@ Block 9 was reconstructed from baseline
 
 Detailed AT and B9 traceability is recorded in
 `docs/implementation/066-sprint-2-closure.md`. All Block 9 verification gates
-have passed. Sprint 2 remains a closure candidate until the implementation is
-merged and reverified on `main`.
+passed. PR #12 was merged into `main` at
+`3f518e67b5ca24f7749abe0f0783a25e05639783`, and the complete quality, demo and
+Docker verification was repeated successfully on that clean merge commit.
+Sprint 2 is closed.
 
 ## Current target-repository verification
 
