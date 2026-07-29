@@ -15,8 +15,8 @@ API_ROOT = REPO_ROOT / "apps" / "api"
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from app.ai.qwen_client import QwenClient, QwenClientError  # noqa: E402
-from app.core.config import Settings  # noqa: E402
+from app.ai.qwen_client import QwenClient, QwenClientError
+from app.core.config import Settings
 
 T = TypeVar("T")
 

@@ -2,9 +2,8 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from common import client, print_json, run_case
+from pydantic import BaseModel, ConfigDict, Field
 
 MESSAGE = """Hello,
 We are evaluating Galician Albariño for specialised wine shops in Germany.
