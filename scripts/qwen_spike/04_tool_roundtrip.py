@@ -1,10 +1,10 @@
 """S-04: execute a local tool and send its result back to Qwen."""
 
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from typing import Any
 
 from common import client, print_json, run_case
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
 
 # Import the tool definition from a file whose name starts with a digit.
 _module_path = Path(__file__).with_name("03_single_tool_call.py")

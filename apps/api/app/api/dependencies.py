@@ -21,14 +21,8 @@ def get_session() -> Iterator[Session]:
 
 
 def require_idempotency_key(
-    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    idempotency_key: str = Header(alias="Idempotency-Key"),
 ) -> str:
-    if idempotency_key is None:
-        raise ApiError(
-            422,
-            "IDEMPOTENCY_KEY_REQUIRED",
-            "Idempotency-Key header is required.",
-        )
     normalized = idempotency_key.strip()
     if not IDEMPOTENCY_KEY_PATTERN.fullmatch(normalized):
         raise ApiError(

@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.agent.orchestrator import BoundedRecommendationOrchestrator
+from app.agent.orchestrator import (
+    BoundedRecommendationOrchestrator,
+    RecommendationModelClient,
+)
 from app.ai.qwen_client import QwenClient
 from app.core.config import Settings
 from app.domain.enums import AgentRunStatus, AgentRunStep
@@ -62,9 +66,10 @@ class LocalRunDispatcher:
         *,
         session_factory: sessionmaker[Session],
         settings: Settings,
+        client_factory: Callable[[Session], RecommendationModelClient] | None = None,
     ) -> None:
         self._session_factory = session_factory
-        self._settings = settings
+        self._client_factory = client_factory or (lambda _session: QwenClient(settings))
         self._queue: asyncio.Queue[str | None] = asyncio.Queue(
             maxsize=settings.async_run_queue_capacity
         )
@@ -127,7 +132,7 @@ class LocalRunDispatcher:
             try:
                 BoundedRecommendationOrchestrator(
                     session,
-                    QwenClient(self._settings),
+                    self._client_factory(session),
                     model=run.model,
                 ).run(inquiry_id, run_id=run.id)
             except Exception:

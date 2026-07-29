@@ -138,12 +138,45 @@ Block 8 was implemented from `ffdf2eae` on
 
 The known non-blocking Starlette TestClient warning remains unchanged.
 
+## Backend verification and Sprint 2 closeout candidate — Block 9
+
+Block 9 was reconstructed from baseline
+`412543258ae3960a265141427ad27873dfce1fc7` on
+`test/sprint2-backend-closeout`.
+
+| Check | Result |
+|---|---|
+| Complete Qwen provider mock | Passed; analysis, tools, recommendation, proposal and email |
+| HTTP + real dispatcher + temporary SQLite E2E | Passed |
+| Happy path, three POST idempotency limits and polling | Passed |
+| Expanded authoritative result | Passed |
+| Retry creates a new run and preserves original | Passed |
+| Second session active-memory recovery | Passed |
+| Opportunity/follow-up/memory non-duplication | Passed |
+| `make demo-backend` | Passed |
+| `make demo-backend-retry` | Passed |
+| pytest excluding live Qwen | Passed, 125 tests |
+| Branch coverage | 90% |
+| Ruff | Passed |
+| mypy strict | Passed, 53 source files |
+| Migrations and reproducible seeds on temporary SQLite | Passed |
+| Docker declaration | One Uvicorn worker, healthcheck and bounded queue verified |
+| Docker image build | Passed |
+| Docker migration and canonical seed | Passed |
+| Docker service health | Passed; Compose reported `healthy` and `/health` returned the expected payload |
+| Docker effective process | Passed with exactly one Uvicorn worker |
+| Live Qwen | Not run; optional and non-blocking |
+
+Detailed AT and B9 traceability is recorded in
+`docs/implementation/066-sprint-2-closure.md`. All Block 9 verification gates
+have passed. Sprint 2 remains a closure candidate until the implementation is
+merged and reverified on `main`.
+
 ## Current target-repository verification
 
 ```bash
 make check-api
 ```
 
-The latest combined verification passed on the Block 8 implementation branch.
-Docker remains fixed to one Uvicorn worker and now exposes the bounded queue
-capacity setting.
+The latest combined verification passed on the Block 9 closeout branch. Docker
+is fixed to one Uvicorn worker and exposes the bounded queue capacity setting.
