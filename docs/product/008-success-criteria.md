@@ -57,7 +57,9 @@ Antes de grabar o presentar:
 - 1 ruta de fallback probada para fallo del modelo;
 - 1 ruta de fallback probada para fallo de una herramienta.
 
-Estos umbrales son objetivos internos del proyecto, no métricas oficiales del hackathon.
+Estos umbrales verifican preparación técnica. La validación comercial se mide
+por compromisos observables según
+`docs/product/012-commercial-validation-direction.md`.
 
 ## No se considerará éxito
 
