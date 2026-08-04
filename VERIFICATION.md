@@ -182,3 +182,26 @@ make check-api
 
 The latest combined verification passed on the Block 9 closeout branch. Docker
 is fixed to one Uvicorn worker and exposes the bounded queue capacity setting.
+
+## Sprint 3 Block 1 — web foundation candidate
+
+Baseline: `8ebf0b29be9e4aa81605d090c259c5a4823f724f`.
+
+| Check | Result |
+|---|---|
+| ESLint | Passed with zero warnings |
+| TypeScript strict | Passed |
+| Frontend contract/unit tests | Passed, 22 tests |
+| Backend suite excluding live Qwen | Passed, 130 tests |
+| Ruff | Passed |
+| mypy strict | Passed, 53 source files |
+| Next.js production build | Passed |
+| Backend `tool_name` safe contract | Added for start, success, failure and rejection |
+| Browser access | Same-origin routes only |
+| FastAPI URL | Server-only `FASTAPI_BASE_URL` |
+| Docker topology | Web depends on healthy API; API remains one worker |
+| Browser bundle | No internal FastAPI URL or `FASTAPI_BASE_URL` |
+| Local integrated smoke | `/`, `/api/health` and `/api/v1/agent-runs` passed through Next.js → FastAPI → SQLite |
+
+Compose and the combined backend/frontend gate must be executed before the
+block is declared closed.

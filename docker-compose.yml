@@ -1,4 +1,17 @@
 services:
+  web:
+    build:
+      context: ./apps/web
+    ports:
+      - "3000:3000"
+    environment:
+      FASTAPI_BASE_URL: ${FASTAPI_BASE_URL:-http://api:8000}
+      DEMO_MODE: ${DEMO_MODE:-true}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   api:
     build:
       context: ./apps/api

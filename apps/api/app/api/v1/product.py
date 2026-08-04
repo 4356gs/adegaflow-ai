@@ -221,6 +221,7 @@ def _public_event_payload(payload: dict[str, object]) -> dict[str, object]:
         "followup_task_id",
         "memory_id",
         "action_name",
+        "tool_name",
     }
     return {key: value for key, value in payload.items() if key in allowed}
 

@@ -19,15 +19,15 @@ developed as an MVP for customer demonstrations and commercial validation.
 - Sprint 2 Block 8 — HTTP API and asynchronous execution: **implemented**
 - Sprint 2 Block 9 — Backend verification and closeout: **verified**
 - Sprint 2 — **closed on `main`**
-- Sprint 3 — frontend experience: **documentation approved; implementation not started**
+- Sprint 3 Block 1 — web foundation and contract: **implementation candidate**
 
-The backend contract and critical acceptance scenarios are stable. Sprint 3
-will turn UC-001 into a customer-facing, end-to-end web demonstration after its
-approved documentation is merged.
+The backend contract and critical acceptance scenarios are stable. Block 1 adds
+the reproducible web foundation; business screens remain assigned to later
+Sprint 3 blocks.
 
 ## Architecture baseline
 
-- Next.js + TypeScript — planned for Sprint 3
+- Next.js 16 + React 19 + strict TypeScript + Tailwind CSS 4
 - FastAPI + Python
 - Qwen Cloud `qwen3.7-plus`
 - `qwen3.6-flash` fallback
@@ -49,21 +49,43 @@ make check-api
 make run-api
 ```
 
+In a second terminal:
+
+```bash
+make install-web
+make run-web
+```
+
 Open:
 
 - API health: `http://localhost:8000/health`
 - OpenAPI: `http://localhost:8000/docs`
+- Web shell: `http://localhost:3000`
+- API health through the web proxy: `http://localhost:3000/api/health`
 
 The backend is invocable under `/api/v1`: clients can submit and inspect
 inquiries, create asynchronous agent runs, poll state and ordered events, read
 terminal commercial results and explicitly retry recoverable failures. POST
-commands use persistent idempotency keys.
+commands use persistent idempotency keys. The browser uses the same-origin
+Next.js proxy; `FASTAPI_BASE_URL` remains server-only.
 
 The local dispatcher has one bounded in-process queue and exactly one consumer.
 It is intentionally non-durable: process restarts close interrupted work with
 `RUN_INTERRUPTED`, after which a client may create an audited retry run. Run the
-MVP with one Uvicorn worker. Frontend, artifact approval and external actions
-remain deferred.
+MVP with one Uvicorn worker. Artifact approval and external actions remain
+deferred.
+
+## Web quality
+
+Node.js 22 and npm are required:
+
+```bash
+make check-web
+make check
+```
+
+The web client centralizes manual TypeScript contracts for the existing P0 API.
+No browser bundle receives the FastAPI service URL or Qwen credentials.
 
 ## Reproducible backend demos
 
@@ -104,15 +126,18 @@ Results are recorded in `scripts/qwen_spike/results.md`.
 ## Docker
 
 ```bash
-docker compose up --build api
+docker compose up --build
 ```
 
-SQLite runtime data is stored in the named volume `adegaflow-data`. Demo seed files are mounted read-only from `data/seeds`.
+Open `http://localhost:3000`. SQLite runtime data is stored in the named volume
+`adegaflow-data`; demo seed files are mounted read-only. The API container keeps
+exactly one Uvicorn worker.
 
 ## Repository
 
 ```text
 apps/api/            FastAPI service, persistence, prompts and tools
+apps/web/            Next.js web shell, proxy and typed HTTP client
 scripts/qwen_spike/  External integration gate
 docs/               Product, architecture, ADR and implementation source of truth
 docs/hackathon/     Historical competition material; not current direction
