@@ -1,0 +1,37 @@
+name: Web CI
+
+on:
+  push:
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/web-ci.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/web-ci.yml"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install
+        working-directory: apps/web
+        run: npm ci
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
+      - name: Type check
+        working-directory: apps/web
+        run: npm run typecheck
+      - name: Tests
+        working-directory: apps/web
+        run: npm test
+      - name: Production build
+        working-directory: apps/web
+        run: npm run build

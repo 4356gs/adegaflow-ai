@@ -4,6 +4,14 @@
 
 ### Added
 
+- Sprint 3 Block 1 Next.js web foundation with strict TypeScript, Tailwind CSS,
+  accessible demo shell and standalone container build.
+- Same-origin `/api/health` and `/api/v1/*` proxy with safe transport errors,
+  correlation IDs and restricted header forwarding.
+- Centralized manual TypeScript contracts and typed client for every P0 backend
+  endpoint.
+- Frontend lint, type, unit/contract test, production-build and CI gates.
+
 - SQLAlchemy 2.0 persistence boundary and SQLite session management.
 - Initial Alembic migration for products, inventory, customers, inquiries, memories and opportunities.
 - Reproducible, idempotent demo seed dataset.
@@ -62,6 +70,11 @@
   including Docker build, migration, seed, health and one-worker runtime checks.
 
 ### Changed
+
+- Public tool events may expose `payload.tool_name`; arguments, complete results,
+  secrets and personal data remain filtered.
+- Docker Compose now starts the Next.js web service with the existing one-worker
+  FastAPI service.
 
 - Product model now records recommended commercial channels in addition to markets.
 - Project status reflects the approved Qwen live spike.

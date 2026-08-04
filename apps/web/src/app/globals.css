@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #17211c;
+  --muted: #5f6d65;
+  --paper: #f5f2ea;
+  --surface: #fffdf8;
+  --wine: #67223d;
+  --wine-dark: #461428;
+  --sage: #dce5da;
+  --line: #d8d4c9;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 85% 5%, rgb(103 34 61 / 10%), transparent 30rem),
+    var(--paper);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+a { color: inherit; }
+
+a:focus-visible { outline: 3px solid #b25a7d; outline-offset: 4px; }
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 20;
+  padding: 0.65rem 0.9rem;
+  color: white;
+  background: var(--wine-dark);
+  transform: translateY(-160%);
+}
+
+.skip-link:focus { transform: translateY(0); }
+
+.site-header { border-bottom: 1px solid var(--line); background: rgb(255 253 248 / 88%); }
+
+.header-inner {
+  width: min(1120px, calc(100% - 2rem));
+  min-height: 4.75rem;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.brand { display: inline-flex; align-items: center; gap: 0.7rem; font-weight: 750; text-decoration: none; }
+.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 50%; color: white; background: var(--wine); font-size: 0.72rem; letter-spacing: 0.08em; }
+.header-inner nav { margin-left: auto; }
+.header-inner nav a { padding: 0.45rem; color: var(--muted); text-decoration: none; }
+.demo-badge { border: 1px solid #aa9d82; border-radius: 999px; padding: 0.3rem 0.65rem; color: #594f3e; background: #f2ead8; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
+main { width: min(1120px, calc(100% - 2rem)); margin: auto; }
+.foundation-page { padding: clamp(4rem, 9vw, 8rem) 0; }
+.eyebrow, .card-label { color: var(--wine); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.75fr); gap: clamp(2rem, 6vw, 5rem); align-items: center; }
+h1 { max-width: 15ch; margin: 0.9rem 0 1.25rem; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.6rem, 6vw, 5.4rem); font-weight: 500; line-height: 0.98; letter-spacing: -0.045em; }
+.lede { max-width: 44rem; color: var(--muted); font-size: clamp(1.05rem, 2vw, 1.3rem); }
+.notice { max-width: 42rem; margin-top: 2rem; border-left: 4px solid var(--wine); padding: 0.85rem 1rem; background: rgb(255 253 248 / 72%); }
+.check-card { border: 1px solid var(--line); border-radius: 1.25rem; padding: clamp(1.5rem, 4vw, 2.25rem); background: var(--surface); box-shadow: 0 1.4rem 4rem rgb(57 40 36 / 8%); }
+.check-card ul { display: grid; gap: 1rem; margin: 1.5rem 0 2rem; padding: 0; list-style: none; }
+.check-card li { display: grid; grid-template-columns: 1.5rem 1fr; gap: 0.6rem; }
+.check-card li span { color: #27633e; font-weight: 900; }
+.health-link { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; border-radius: 0.65rem; padding: 0.7rem 1rem; color: white; background: var(--wine); font-weight: 750; text-decoration: none; }
+.health-link:hover { background: var(--wine-dark); }
+.site-footer { width: min(1120px, calc(100% - 2rem)); margin: auto; border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; color: var(--muted); font-size: 0.88rem; }
+
+@media (max-width: 760px) {
+  .header-inner { gap: 0.75rem; }
+  .header-inner nav { display: none; }
+  .demo-badge { margin-left: auto; }
+  .hero-grid { grid-template-columns: 1fr; }
+  h1 { max-width: 18ch; }
+  .foundation-page { padding-top: 3.5rem; }
+}

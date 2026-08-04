@@ -1,4 +1,4 @@
-.PHONY: install-api run-api test-api lint-api format-api typecheck-api check-api docker-api qwen-spike db-upgrade db-downgrade db-reset seed-demo seed-demo-reset demo-backend demo-backend-retry
+.PHONY: install-api run-api test-api lint-api format-api typecheck-api check-api docker-api install-web run-web test-web lint-web typecheck-web build-web check-web check docker qwen-spike db-upgrade db-downgrade db-reset seed-demo seed-demo-reset demo-backend demo-backend-retry
 
 install-api:
 	python -m pip install -e "./apps/api[dev]"
@@ -19,6 +19,28 @@ typecheck-api:
 	mypy apps/api/app
 
 check-api: lint-api typecheck-api test-api
+
+install-web:
+	npm --prefix apps/web ci
+
+run-web:
+	npm --prefix apps/web run dev
+
+test-web:
+	npm --prefix apps/web test
+
+lint-web:
+	npm --prefix apps/web run lint
+
+typecheck-web:
+	npm --prefix apps/web run typecheck
+
+build-web:
+	npm --prefix apps/web run build
+
+check-web: lint-web typecheck-web test-web build-web
+
+check: check-api check-web
 
 db-upgrade:
 	alembic -c apps/api/alembic.ini upgrade head
@@ -45,6 +67,9 @@ demo-backend-retry:
 
 docker-api:
 	docker compose up --build api
+
+docker:
+	docker compose up --build
 
 qwen-spike:
 	python scripts/qwen_spike/run_all.py
