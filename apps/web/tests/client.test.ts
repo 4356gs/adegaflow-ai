@@ -60,6 +60,16 @@ describe("typed API client", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/agent-runs?status=failed&limit=10");
   });
 
+  it("requests the bounded cockpit page exactly", async () => {
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      void args;
+      return Response.json({ items: [], limit: 20, offset: 0 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await api.listRuns({ limit: 20, offset: 0 });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/agent-runs?limit=20&offset=0");
+  });
+
   it("does not send a body when none is provided", async () => {
     const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
       void args;

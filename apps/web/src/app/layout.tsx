@@ -26,7 +26,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
               <span>AdegaFlow AI</span>
             </Link>
             <nav aria-label="Navegación principal">
-              <Link href="/" aria-current="page">Inicio</Link>
+              <Link href="/">Cockpit</Link>
+              <Link href="/inquiries/new">Nueva consulta</Link>
             </nav>
             <span className="demo-badge">Entorno demo</span>
           </div>
