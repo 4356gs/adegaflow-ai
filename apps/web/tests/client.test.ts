@@ -28,6 +28,34 @@ describe("typed API client", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/agent-runs/run/unsafe/events?after_sequence=7&limit=25");
   });
 
+  it("keeps run reads same-origin and forwards cancellation", async () => {
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      void args;
+      return Response.json({ id: "run-1" });
+    });
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", fetchMock);
+    await api.getRun("run-1", controller.signal);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/agent-runs/run-1");
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+  });
+
+  it("posts retry with its stable key, no body and an abort signal", async () => {
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      void args;
+      return Response.json({ agent_run_id: "run-2" }, { status: 202 });
+    });
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", fetchMock);
+    await api.retryRun("run-1", "retry-key-1", controller.signal);
+    const [path, init] = fetchMock.mock.calls[0] ?? [];
+    expect(path).toBe("/api/v1/agent-runs/run-1/retry");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBeUndefined();
+    expect(init?.signal).toBe(controller.signal);
+    expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("retry-key-1");
+  });
+
   it("raises the safe typed error envelope", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: { code: "RUN_NOT_TERMINAL", message: "Not ready", details: {}, correlation_id: "corr-1" } }, { status: 409 })));
     await expect(api.getResult("run-1")).rejects.toMatchObject({ status: 409, code: "RUN_NOT_TERMINAL", correlationId: "corr-1" });

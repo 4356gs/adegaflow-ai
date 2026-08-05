@@ -49,11 +49,13 @@ describe("Block 2 component states and routes", () => {
     expect(html).toContain('aria-live="polite"');
   });
 
-  it("renders a UUID-only placeholder without API, timeline or result content", async () => {
+  it("renders the observable workspace for a UUID and rejects malformed IDs locally", async () => {
     const page = await RunPage({ params: Promise.resolve({ runId: run.id }) });
     const html = renderToStaticMarkup(page);
-    expect(html).toContain(run.id);
-    expect(html).toContain("Bloque 3");
-    expect(html).not.toMatch(/timeline|resultado comercial|recomendación/i);
+    expect(html).toContain("Cargando ejecución");
+    const invalidPage = await RunPage({ params: Promise.resolve({ runId: "not-a-run" }) });
+    const invalidHtml = renderToStaticMarkup(invalidPage);
+    expect(invalidHtml).toContain("Identificador no válido");
+    expect(invalidHtml).toContain("No se realizó ninguna consulta");
   });
 });
