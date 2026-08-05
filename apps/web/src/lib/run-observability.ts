@@ -133,6 +133,31 @@ export type RunSynchronization = {
   terminal: boolean;
 };
 
+export type RunPollingStableState = {
+  detail: AgentRunDetail | null;
+  accumulator: EventAccumulator;
+};
+
+export type RunPollingCoordinator = {
+  start(): void;
+  retryNow(): void;
+  visibilityChanged(): void;
+  stop(): void;
+};
+
+export type RunPollingOptions = {
+  runId: UUID;
+  reader: RunReader;
+  isHidden: () => boolean;
+  onStart: (hasStableDetail: boolean) => void;
+  onSuccess: (result: RunSynchronization) => void;
+  onError: (error: unknown, stable: RunPollingStableState) => void;
+  setTimer?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
+  clearTimer?: (timer: ReturnType<typeof setTimeout>) => void;
+  queueTask?: (callback: () => void) => void;
+  createAbortController?: () => AbortController;
+};
+
 export class EventContractError extends Error {
   constructor(public readonly code: string, message: string) {
     super(message);
@@ -298,6 +323,94 @@ export async function synchronizeRun(
     detail,
     accumulator,
     terminal: isTerminalStatus(detail.status) && accumulator.lastSequence >= detail.last_event_sequence,
+  };
+}
+
+export function createRunPollingCoordinator({
+  runId,
+  reader,
+  isHidden,
+  onStart,
+  onSuccess,
+  onError,
+  setTimer = (callback, delay) => setTimeout(callback, delay),
+  clearTimer = (timer) => clearTimeout(timer),
+  queueTask = (callback) => queueMicrotask(callback),
+  createAbortController = () => new AbortController(),
+}: RunPollingOptions): RunPollingCoordinator {
+  let disposed = false;
+  let inFlight = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let controller: AbortController | null = null;
+  let resumeAfterFlight = false;
+  let accumulator = emptyEventAccumulator();
+  let currentDetail: AgentRunDetail | null = null;
+
+  const cancelTimer = () => {
+    if (timer !== null) clearTimer(timer);
+    timer = null;
+  };
+
+  const schedule = () => {
+    cancelTimer();
+    if (disposed || isHidden() || (currentDetail && isTerminalStatus(currentDetail.status))) return;
+    timer = setTimer(() => void synchronize(), POLL_INTERVAL_MS);
+  };
+
+  const synchronize = async () => {
+    if (disposed || inFlight || isHidden()) return;
+    cancelTimer();
+    inFlight = true;
+    controller = createAbortController();
+    onStart(currentDetail !== null);
+    let scheduleNext = false;
+
+    try {
+      const result = await synchronizeRun(runId, accumulator, reader, controller.signal);
+      if (disposed) return;
+      accumulator = result.accumulator;
+      currentDetail = result.detail;
+      onSuccess(result);
+      scheduleNext = !result.terminal;
+    } catch (error) {
+      if (disposed || (error instanceof DOMException && error.name === "AbortError")) return;
+      onError(error, { detail: currentDetail, accumulator });
+    } finally {
+      inFlight = false;
+      controller = null;
+      const resumeNow = resumeAfterFlight;
+      resumeAfterFlight = false;
+      if (resumeNow && scheduleNext && !disposed && !isHidden()) {
+        void synchronize();
+      } else if (scheduleNext) {
+        schedule();
+      }
+    }
+  };
+
+  return {
+    start() {
+      if (!disposed) queueTask(() => void synchronize());
+    },
+    retryNow() {
+      void synchronize();
+    },
+    visibilityChanged() {
+      if (isHidden()) {
+        resumeAfterFlight = false;
+        cancelTimer();
+      } else if (inFlight) {
+        resumeAfterFlight = true;
+      } else {
+        void synchronize();
+      }
+    },
+    stop() {
+      disposed = true;
+      resumeAfterFlight = false;
+      cancelTimer();
+      controller?.abort();
+    },
   };
 }
 

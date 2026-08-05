@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AgentRunDetail, EventList, PublicEvent } from "@/lib/api/types";
 import {
@@ -9,6 +9,7 @@ import {
   acceptRetryIntent,
   actionLabel,
   applyEventPage,
+  createRunPollingCoordinator,
   createRetryIntent,
   emptyEventAccumulator,
   eventPresentation,
@@ -27,6 +28,23 @@ import {
 
 const RUN_ID = "22222222-2222-4222-8222-222222222222";
 const INQUIRY_ID = "11111111-1111-4111-8111-111111111111";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function flushAsync(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
 
 function event(sequence: number, overrides: Partial<PublicEvent> = {}): PublicEvent {
   return {
@@ -205,6 +223,189 @@ describe("incremental synchronization", () => {
     const result = await synchronizeRun(RUN_ID, { events: [event(1)], lastSequence: 1, hydrated: true }, reader);
     expect(reader.getEvents).not.toHaveBeenCalled();
     expect(result.terminal).toBe(true);
+  });
+});
+
+describe("polling coordinator integration", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("waits 1.5 seconds after a completed cycle before starting the next one", async () => {
+    const reader = {
+      getRun: vi.fn(async () => detail()),
+      getEvents: vi.fn(async () => page([])),
+    };
+    const coordinator = createRunPollingCoordinator({
+      runId: RUN_ID,
+      reader,
+      isHidden: () => false,
+      onStart: vi.fn(),
+      onSuccess: vi.fn(),
+      onError: vi.fn(),
+      queueTask: (callback) => callback(),
+    });
+
+    coordinator.start();
+    await flushAsync();
+    expect(reader.getRun).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS - 1);
+    expect(reader.getRun).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await flushAsync();
+    expect(reader.getRun).toHaveBeenCalledTimes(2);
+    coordinator.stop();
+  });
+
+  it("never overlaps cycles and resumes immediately after an in-flight visibility change", async () => {
+    const secondDetail = deferred<AgentRunDetail>();
+    const getRun = vi.fn()
+      .mockResolvedValueOnce(detail())
+      .mockImplementationOnce(() => secondDetail.promise)
+      .mockResolvedValue(detail());
+    const coordinator = createRunPollingCoordinator({
+      runId: RUN_ID,
+      reader: { getRun, getEvents: vi.fn(async () => page([])) },
+      isHidden: () => false,
+      onStart: vi.fn(),
+      onSuccess: vi.fn(),
+      onError: vi.fn(),
+      queueTask: (callback) => callback(),
+    });
+
+    coordinator.start();
+    await flushAsync();
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    expect(getRun).toHaveBeenCalledTimes(2);
+
+    coordinator.visibilityChanged();
+    expect(getRun).toHaveBeenCalledTimes(2);
+    secondDetail.resolve(detail());
+    await flushAsync();
+    expect(getRun).toHaveBeenCalledTimes(3);
+    coordinator.stop();
+  });
+
+  it("pauses while hidden and resumes with the last confirmed cursor", async () => {
+    let hidden = false;
+    const getRun = vi.fn()
+      .mockResolvedValueOnce(detail({ last_event_sequence: 1 }))
+      .mockResolvedValueOnce(detail({ last_event_sequence: 2 }));
+    const getEvents = vi.fn(async (_id: string, cursor: number) => (
+      cursor === 0 ? page([event(1)]) : page([event(2)], { last_sequence: 2 })
+    ));
+    const successes: number[][] = [];
+    const coordinator = createRunPollingCoordinator({
+      runId: RUN_ID,
+      reader: { getRun, getEvents },
+      isHidden: () => hidden,
+      onStart: vi.fn(),
+      onSuccess: (result) => successes.push(result.accumulator.events.map((item) => item.sequence)),
+      onError: vi.fn(),
+      queueTask: (callback) => callback(),
+    });
+
+    coordinator.start();
+    await flushAsync();
+    hidden = true;
+    coordinator.visibilityChanged();
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 2);
+    expect(getRun).toHaveBeenCalledTimes(1);
+
+    hidden = false;
+    coordinator.visibilityChanged();
+    await flushAsync();
+    expect(getEvents.mock.calls.map((call) => call[1])).toEqual([0, 1]);
+    expect(successes.at(-1)).toEqual([1, 2]);
+    coordinator.stop();
+  });
+
+  it("stops automatic polling after a fully drained terminal run", async () => {
+    const reader = {
+      getRun: vi.fn(async () => detail({ status: "completed", current_step: "completed", last_event_sequence: 1 })),
+      getEvents: vi.fn(async () => page([event(1)], { terminal: true })),
+    };
+    const coordinator = createRunPollingCoordinator({
+      runId: RUN_ID,
+      reader,
+      isHidden: () => false,
+      onStart: vi.fn(),
+      onSuccess: vi.fn(),
+      onError: vi.fn(),
+      queueTask: (callback) => callback(),
+    });
+
+    coordinator.start();
+    await flushAsync();
+    expect(reader.getRun).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+    coordinator.stop();
+  });
+
+  it("aborts the active request and removes its timer when stopped", async () => {
+    let observedSignal: AbortSignal | undefined;
+    const getRun = vi.fn((_id: string, signal?: AbortSignal) => new Promise<AgentRunDetail>((_resolve, reject) => {
+      observedSignal = signal;
+      signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+    }));
+    const onError = vi.fn();
+    const coordinator = createRunPollingCoordinator({
+      runId: RUN_ID,
+      reader: { getRun, getEvents: vi.fn() },
+      isHidden: () => false,
+      onStart: vi.fn(),
+      onSuccess: vi.fn(),
+      onError,
+      queueTask: (callback) => callback(),
+    });
+
+    coordinator.start();
+    await flushAsync();
+    coordinator.stop();
+    await flushAsync();
+    expect(observedSignal?.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("recovers manually from the same cursor after a read failure", async () => {
+    const getRun = vi.fn()
+      .mockResolvedValueOnce(detail({ last_event_sequence: 1 }))
+      .mockResolvedValue(detail({ last_event_sequence: 2 }));
+    let cursorOneAttempts = 0;
+    const getEvents = vi.fn(async (_id: string, cursor: number) => {
+      if (cursor === 0) return page([event(1)]);
+      cursorOneAttempts += 1;
+      if (cursorOneAttempts === 1) throw new TypeError("temporary");
+      return page([event(2)], { last_sequence: 2 });
+    });
+    const onError = vi.fn();
+    const onSuccess = vi.fn();
+    const coordinator = createRunPollingCoordinator({
+      runId: RUN_ID,
+      reader: { getRun, getEvents },
+      isHidden: () => false,
+      onStart: vi.fn(),
+      onSuccess,
+      onError,
+      queueTask: (callback) => callback(),
+    });
+
+    coordinator.start();
+    await flushAsync();
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    await flushAsync();
+    expect(onError).toHaveBeenCalledWith(expect.any(TypeError), expect.objectContaining({
+      accumulator: expect.objectContaining({ lastSequence: 1 }),
+    }));
+    expect(vi.getTimerCount()).toBe(0);
+
+    coordinator.retryNow();
+    await flushAsync();
+    expect(getEvents.mock.calls.map((call) => call[1])).toEqual([0, 1, 1]);
+    expect(onSuccess.mock.calls.at(-1)?.[0].accumulator.lastSequence).toBe(2);
+    coordinator.stop();
   });
 });
 

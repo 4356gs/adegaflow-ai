@@ -2,29 +2,26 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { RunTimeline } from "@/components/run-timeline";
 import { ApiError, api } from "@/lib/api/client";
 import type { AgentRunDetail, PublicEvent, UUID } from "@/lib/api/types";
 import {
-  POLL_INTERVAL_MS,
   RETRY_INTENT_KEY,
   EventContractError,
   abbreviateId,
   acceptRetryIntent,
+  createRunPollingCoordinator,
   createRetryIntent,
   discardRetryIntent,
-  emptyEventAccumulator,
   formatRunDate,
-  isTerminalStatus,
   markRetryTransportError,
   restoreRetryIntent,
   runStateMessage,
   runStatusLabel,
   runStepLabel,
   serializeRetryIntent,
-  synchronizeRun,
   type RetryIntent,
 } from "@/lib/run-observability";
 
@@ -44,6 +41,7 @@ export type WorkspaceSnapshot = {
 export type RetryUiState =
   | { kind: "idle" }
   | { kind: "recovered"; intent: RetryIntent }
+  | { kind: "blocked_by_other_run"; intent: RetryIntent }
   | { kind: "submitting"; intent: RetryIntent }
   | { kind: "transport_error"; intent: RetryIntent; message: string; correlationId: string | null }
   | { kind: "definitive_error"; intent: RetryIntent; message: string; correlationId: string | null };
@@ -66,6 +64,130 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
+type RetryStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export type RunRetryCoordinator = {
+  restore(): void;
+  execute(existing?: RetryIntent): Promise<void>;
+  discard(): void;
+  stop(): void;
+};
+
+export function createRunRetryCoordinator({
+  runId,
+  storage,
+  retryRun,
+  navigate,
+  onState,
+  onRevoked,
+  onRefresh,
+  randomUUID = () => crypto.randomUUID(),
+  createAbortController = () => new AbortController(),
+}: {
+  runId: UUID;
+  storage: RetryStorage;
+  retryRun: (id: UUID, key: UUID, signal?: AbortSignal) => ReturnType<typeof api.retryRun>;
+  navigate: (path: string) => void;
+  onState: (state: RetryUiState) => void;
+  onRevoked: () => void;
+  onRefresh: () => void;
+  randomUUID?: () => UUID;
+  createAbortController?: () => AbortController;
+}): RunRetryCoordinator {
+  let inFlight = false;
+  let disposed = false;
+  let controller: AbortController | null = null;
+
+  const persist = (intent: RetryIntent) => {
+    storage.setItem(RETRY_INTENT_KEY, serializeRetryIntent(intent));
+  };
+
+  const presentStoredIntent = (intent: RetryIntent) => {
+    if (intent.acceptedRunId === runId) {
+      discardRetryIntent(storage);
+      if (!disposed) onState({ kind: "idle" });
+    } else if (intent.originalRunId === runId) {
+      if (!disposed) onState({ kind: "recovered", intent });
+    } else if (!disposed) {
+      onState({ kind: "blocked_by_other_run", intent });
+    }
+  };
+
+  return {
+    restore() {
+      const stored = restoreRetryIntent(storage);
+      if (stored) presentStoredIntent(stored);
+    },
+    async execute(existing) {
+      if (inFlight || disposed) return;
+      inFlight = true;
+      try {
+        const stored = restoreRetryIntent(storage);
+        if (!existing && stored) {
+          presentStoredIntent(stored);
+          return;
+        }
+        if (existing && stored && stored.retryKey !== existing.retryKey) {
+          presentStoredIntent(stored);
+          return;
+        }
+
+        let intent = stored ?? existing ?? createRetryIntent(runId, randomUUID);
+        if (intent.originalRunId !== runId) {
+          presentStoredIntent(intent);
+          return;
+        }
+
+        persist(intent);
+        if (!disposed) onState({ kind: "submitting", intent });
+        if (intent.acceptedRunId) {
+          if (!disposed) navigate(`/runs/${intent.acceptedRunId}`);
+          return;
+        }
+
+        controller = createAbortController();
+        try {
+          const accepted = await retryRun(intent.originalRunId, intent.retryKey, controller.signal);
+          intent = acceptRetryIntent(intent, accepted);
+          persist(intent);
+          if (!disposed) navigate(`/runs/${accepted.agent_run_id}`);
+        } catch (error) {
+          if (isAbortError(error)) return;
+          const message = error instanceof ApiError ? error.message : "La respuesta del nuevo intento es incierta.";
+          const correlationId = error instanceof ApiError ? error.correlationId : null;
+          if (error instanceof ApiError && (error.code === "IDEMPOTENCY_CONFLICT" || error.code === "RUN_NOT_RETRYABLE")) {
+            if (!disposed) onState({ kind: "definitive_error", intent, message, correlationId });
+            if (error.code === "RUN_NOT_RETRYABLE") {
+              discardRetryIntent(storage);
+              if (!disposed) {
+                onRevoked();
+                onRefresh();
+              }
+            }
+          } else {
+            intent = markRetryTransportError(intent);
+            persist(intent);
+            if (!disposed) onState({ kind: "transport_error", intent, message, correlationId });
+          }
+        } finally {
+          controller = null;
+        }
+      } finally {
+        inFlight = false;
+      }
+    },
+    discard() {
+      discardRetryIntent(storage);
+      if (!disposed) onState({ kind: "idle" });
+    },
+    stop() {
+      disposed = true;
+      controller?.abort();
+      controller = null;
+    },
+  };
+}
+
 export function RunWorkspace({ runId }: { runId: UUID }) {
   const router = useRouter();
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot | null>(null);
@@ -73,170 +195,75 @@ export function RunWorkspace({ runId }: { runId: UUID }) {
   const [retryState, setRetryState] = useState<RetryUiState>({ kind: "idle" });
   const [retryRevoked, setRetryRevoked] = useState(false);
   const synchronizeRef = useRef<() => void>(() => undefined);
-  const retryGuardRef = useRef(false);
-  const retryControllerRef = useRef<AbortController | null>(null);
+  const retryCoordinatorRef = useRef<RunRetryCoordinator | null>(null);
   const retryErrorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    const restored = restoreRetryIntent(sessionStorage, runId);
-    if (!restored) return;
-    if (restored.acceptedRunId === runId) {
-      discardRetryIntent(sessionStorage);
-      return;
-    }
-    queueMicrotask(() => {
-      if (!cancelled) setRetryState({ kind: "recovered", intent: restored });
+    const coordinator = createRunRetryCoordinator({
+      runId,
+      storage: sessionStorage,
+      retryRun: api.retryRun,
+      navigate: (path) => router.replace(path),
+      onState: setRetryState,
+      onRevoked: () => setRetryRevoked(true),
+      onRefresh: () => synchronizeRef.current(),
     });
-    return () => { cancelled = true; };
-  }, [runId]);
+    retryCoordinatorRef.current = coordinator;
+    coordinator.restore();
+    return () => {
+      coordinator.stop();
+      if (retryCoordinatorRef.current === coordinator) retryCoordinatorRef.current = null;
+    };
+  }, [router, runId]);
 
   useEffect(() => {
-    let disposed = false;
-    let inFlight = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let controller: AbortController | null = null;
-    let resumeAfterFlight = false;
-    let accumulator = emptyEventAccumulator();
-    let currentDetail: AgentRunDetail | null = null;
-
-    const clearTimer = () => {
-      if (timer) clearTimeout(timer);
-      timer = null;
-    };
-
-    const schedule = () => {
-      clearTimer();
-      if (disposed || document.hidden || (currentDetail && isTerminalStatus(currentDetail.status))) return;
-      timer = setTimeout(() => void synchronize(), POLL_INTERVAL_MS);
-    };
-
-    const synchronize = async () => {
-      if (disposed || inFlight || document.hidden) return;
-      clearTimer();
-      inFlight = true;
-      controller = new AbortController();
-      if (currentDetail) {
-        setSnapshot((value) => value ? { ...value, syncing: true } : value);
-      } else {
+    const coordinator = createRunPollingCoordinator({
+      runId,
+      reader: api,
+      isHidden: () => document.hidden,
+      onStart: (hasStableDetail) => {
+        if (hasStableDetail) {
+          setSnapshot((value) => value ? { ...value, syncing: true } : value);
+        } else setInitialIssue(null);
+      },
+      onSuccess: (result) => {
+        setSnapshot({ detail: result.detail, events: result.accumulator.events, syncing: false, readIssue: null });
         setInitialIssue(null);
-      }
-      let scheduleNext = false;
-      try {
-        const result = await synchronizeRun(runId, accumulator, api, controller.signal);
-        if (disposed) return;
-        accumulator = result.accumulator;
-        currentDetail = result.detail;
-        setSnapshot({ detail: result.detail, events: accumulator.events, syncing: false, readIssue: null });
-        setInitialIssue(null);
-        setRetryRevoked(false);
+        setRetryRevoked((revoked) => revoked && result.detail.status === "failed" && result.detail.retryable);
 
-        const stored = restoreRetryIntent(sessionStorage, runId);
+        const stored = restoreRetryIntent(sessionStorage);
         if (stored?.acceptedRunId === runId) {
           discardRetryIntent(sessionStorage);
           setRetryState({ kind: "idle" });
         }
-        scheduleNext = !result.terminal;
-      } catch (error) {
-        if (disposed || isAbortError(error)) return;
+      },
+      onError: (error, stable) => {
         const issue = requestIssue(error);
-        if (currentDetail) {
-          setSnapshot({ detail: currentDetail, events: accumulator.events, syncing: false, readIssue: issue });
+        if (stable.detail) {
+          setSnapshot({ detail: stable.detail, events: stable.accumulator.events, syncing: false, readIssue: issue });
         } else {
           setInitialIssue(issue);
         }
-      } finally {
-        inFlight = false;
-        controller = null;
-        const resumeNow = resumeAfterFlight;
-        resumeAfterFlight = false;
-        if (resumeNow && scheduleNext && !disposed && !document.hidden) {
-          void synchronize();
-        } else if (scheduleNext) {
-          schedule();
-        }
-      }
-    };
+      },
+    });
 
-    synchronizeRef.current = () => void synchronize();
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        resumeAfterFlight = false;
-        clearTimer();
-      } else if (inFlight) {
-        resumeAfterFlight = true;
-      } else {
-        void synchronize();
-      }
-    };
+    synchronizeRef.current = coordinator.retryNow;
+    const onVisibilityChange = () => coordinator.visibilityChanged();
     document.addEventListener("visibilitychange", onVisibilityChange);
-    queueMicrotask(() => void synchronize());
+    coordinator.start();
 
     return () => {
-      disposed = true;
-      clearTimer();
-      controller?.abort();
+      coordinator.stop();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       synchronizeRef.current = () => undefined;
     };
   }, [runId]);
-
-  useEffect(() => () => retryControllerRef.current?.abort(), []);
 
   useEffect(() => {
     if (retryState.kind !== "transport_error" && retryState.kind !== "definitive_error") return;
     const frame = requestAnimationFrame(() => retryErrorRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [retryState.kind]);
-
-  const persistRetry = useCallback((intent: RetryIntent) => {
-    sessionStorage.setItem(RETRY_INTENT_KEY, serializeRetryIntent(intent));
-  }, []);
-
-  const executeRetry = useCallback(async (existing?: RetryIntent) => {
-    if (retryGuardRef.current) return;
-    retryGuardRef.current = true;
-    let intent = existing ?? createRetryIntent(runId);
-    persistRetry(intent);
-    setRetryState({ kind: "submitting", intent });
-    if (intent.acceptedRunId) {
-      router.replace(`/runs/${intent.acceptedRunId}`);
-      retryGuardRef.current = false;
-      return;
-    }
-
-    retryControllerRef.current = new AbortController();
-    try {
-      const accepted = await api.retryRun(runId, intent.retryKey, retryControllerRef.current.signal);
-      intent = acceptRetryIntent(intent, accepted);
-      persistRetry(intent);
-      router.replace(`/runs/${accepted.agent_run_id}`);
-    } catch (error) {
-      if (isAbortError(error)) return;
-      const message = error instanceof ApiError ? error.message : "La respuesta del nuevo intento es incierta.";
-      const correlationId = error instanceof ApiError ? error.correlationId : null;
-      if (error instanceof ApiError && (error.code === "IDEMPOTENCY_CONFLICT" || error.code === "RUN_NOT_RETRYABLE")) {
-        setRetryState({ kind: "definitive_error", intent, message, correlationId });
-        if (error.code === "RUN_NOT_RETRYABLE") {
-          discardRetryIntent(sessionStorage);
-          setRetryRevoked(true);
-          synchronizeRef.current();
-        }
-      } else {
-        intent = markRetryTransportError(intent);
-        persistRetry(intent);
-        setRetryState({ kind: "transport_error", intent, message, correlationId });
-      }
-    } finally {
-      retryControllerRef.current = null;
-      retryGuardRef.current = false;
-    }
-  }, [persistRetry, router, runId]);
-
-  const discardRetry = useCallback(() => {
-    discardRetryIntent(sessionStorage);
-    setRetryState({ kind: "idle" });
-  }, []);
 
   return (
     <RunWorkspaceView
@@ -247,8 +274,8 @@ export function RunWorkspace({ runId }: { runId: UUID }) {
       retryRevoked={retryRevoked}
       retryErrorRef={retryErrorRef}
       onReadRetry={() => synchronizeRef.current()}
-      onRetry={(intent) => void executeRetry(intent)}
-      onDiscardRetry={discardRetry}
+      onRetry={(intent) => void retryCoordinatorRef.current?.execute(intent)}
+      onDiscardRetry={() => retryCoordinatorRef.current?.discard()}
     />
   );
 }
@@ -309,7 +336,12 @@ export function RunWorkspaceView({
   const startedAt = formatRunDate(detail.started_at);
   const completedAt = formatRunDate(detail.completed_at);
   const retryAllowed = detail.status === "failed" && detail.retryable && !retryRevoked;
-  const activeRetryIntent = retryState.kind === "idle" ? undefined : retryState.intent;
+  const activeRetryIntent = retryState.kind === "recovered"
+    || retryState.kind === "submitting"
+    || retryState.kind === "transport_error"
+    || retryState.kind === "definitive_error"
+    ? retryState.intent
+    : undefined;
   const retryBusy = retryState.kind === "submitting";
   const retryError = retryState.kind === "transport_error" || retryState.kind === "definitive_error" ? retryState : null;
 
@@ -353,6 +385,14 @@ export function RunWorkspaceView({
         </div>
       ) : null}
 
+      {retryState.kind === "blocked_by_other_run" ? (
+        <div className="state-card warning-card" role="alert">
+          <h2>Hay otro reintento pendiente</h2>
+          <p>Antes de crear uno nuevo, vuelve a la ejecución propietaria o descarta explícitamente la intención pendiente.</p>
+          <Link className="button button-secondary" href={`/runs/${retryState.intent.originalRunId}`}>Volver a la ejecución pendiente</Link>
+          <button className="text-button" type="button" onClick={onDiscardRetry}>Descartar esta intención</button>
+        </div>
+      ) : null}
       {retryState.kind === "recovered" ? <div className="recovery-note" role="status">Hay un nuevo intento pendiente. Solo continuará cuando lo confirmes y conservará la misma clave idempotente.</div> : null}
       {retryError ? (
         <div className="state-card error-card retry-error" role="alert" tabIndex={-1} ref={retryErrorRef}>
@@ -362,7 +402,7 @@ export function RunWorkspaceView({
           {retryState.kind === "transport_error" ? <p>Continúa con la misma clave para evitar duplicados.</p> : <button className="text-button" type="button" onClick={onDiscardRetry}>Descartar esta intención</button>}
         </div>
       ) : null}
-      {retryAllowed && retryState.kind !== "definitive_error" ? (
+      {retryAllowed && retryState.kind !== "definitive_error" && retryState.kind !== "blocked_by_other_run" ? (
         <div className="retry-panel">
           <div><h2>Crear un nuevo intento</h2><p>El intento actual permanecerá intacto y el nuevo quedará enlazado a este run.</p></div>
           <button className="button button-primary" type="button" disabled={retryBusy} aria-disabled={retryBusy} onClick={() => onRetry(activeRetryIntent)}>

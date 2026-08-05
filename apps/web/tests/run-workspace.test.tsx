@@ -1,14 +1,49 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type Mock } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
 
-import { RunWorkspaceView, type RetryUiState, type WorkspaceSnapshot } from "@/components/run-workspace";
-import type { AgentRunDetail, PublicEvent } from "@/lib/api/types";
+import {
+  RunWorkspaceView,
+  createRunRetryCoordinator,
+  type RetryUiState,
+  type WorkspaceSnapshot,
+} from "@/components/run-workspace";
+import { ApiError } from "@/lib/api/client";
+import type { AgentRunDetail, PublicEvent, RunAccepted } from "@/lib/api/types";
+import { RETRY_INTENT_KEY, restoreRetryIntent, serializeRetryIntent, type RetryIntent } from "@/lib/run-observability";
 
 const RUN_ID = "22222222-2222-4222-8222-222222222222";
 const ORIGINAL_ID = "11111111-1111-4111-8111-111111111111";
 const RETRY_KEY = "44444444-4444-4444-8444-444444444444";
+const ACCEPTED_ID = "66666666-6666-4666-8666-666666666666";
+
+function memoryStorage() {
+  const values = new Map<string, string>();
+  return {
+    getItem: vi.fn((key: string) => values.get(key) ?? null),
+    setItem: vi.fn((key: string, value: string) => { values.set(key, value); }),
+    removeItem: vi.fn((key: string) => { values.delete(key); }),
+  };
+}
+
+function accepted(): RunAccepted {
+  return {
+    agent_run_id: ACCEPTED_ID,
+    inquiry_id: "33333333-3333-4333-8333-333333333333",
+    status: "queued",
+    current_step: "queued",
+    correlation_id: "77777777-7777-4777-8777-777777777777",
+    retry_of_run_id: RUN_ID,
+    poll_url: `/api/v1/agent-runs/${ACCEPTED_ID}`,
+  };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
 
 function detail(overrides: Partial<AgentRunDetail> = {}): AgentRunDetail {
   return {
@@ -167,5 +202,147 @@ describe("retry controls", () => {
     const conflict = view(snapshot(failed), { kind: "definitive_error", intent, message: "Conflicto", correlationId: "corr-conflict" });
     expect(conflict).toContain("Descartar esta intención");
     expect(conflict).not.toContain(">Crear nuevo intento<");
+  });
+
+  it("blocks a new retry while another run owns the global intent", () => {
+    const foreignIntent: RetryIntent = { ...intent, originalRunId: ORIGINAL_ID };
+    const html = view(snapshot(failed), { kind: "blocked_by_other_run", intent: foreignIntent });
+    expect(html).toContain("Hay otro reintento pendiente");
+    expect(html).toContain(`href="/runs/${ORIGINAL_ID}"`);
+    expect(html).toContain("Descartar esta intención");
+    expect(html).not.toContain(">Crear nuevo intento<");
+  });
+});
+
+describe("retry coordinator integration", () => {
+  type RetryRun = (id: string, key: string, signal?: AbortSignal) => Promise<RunAccepted>;
+
+  function coordinator(overrides: {
+    storage?: ReturnType<typeof memoryStorage>;
+    retryRun?: Mock<RetryRun>;
+    navigate?: Mock<(path: string) => void>;
+    onState?: Mock<(state: RetryUiState) => void>;
+    onRevoked?: Mock<() => void>;
+    onRefresh?: Mock<() => void>;
+  } = {}) {
+    const storage = overrides.storage ?? memoryStorage();
+    const retryRun = overrides.retryRun ?? vi.fn<RetryRun>(async () => accepted());
+    const navigate = overrides.navigate ?? vi.fn<(path: string) => void>();
+    const onState = overrides.onState ?? vi.fn<(state: RetryUiState) => void>();
+    const onRevoked = overrides.onRevoked ?? vi.fn<() => void>();
+    const onRefresh = overrides.onRefresh ?? vi.fn<() => void>();
+    return {
+      storage,
+      retryRun,
+      navigate,
+      onState,
+      onRevoked,
+      onRefresh,
+      value: createRunRetryCoordinator({
+        runId: RUN_ID,
+        storage,
+        retryRun,
+        navigate,
+        onState,
+        onRevoked,
+        onRefresh,
+        randomUUID: () => RETRY_KEY,
+      }),
+    };
+  }
+
+  it("detects a foreign global intent and cannot overwrite it without explicit discard", async () => {
+    const storage = memoryStorage();
+    const foreignIntent: RetryIntent = {
+      version: 1,
+      originalRunId: ORIGINAL_ID,
+      retryKey: RETRY_KEY,
+      stage: "transport_error",
+    };
+    storage.setItem(RETRY_INTENT_KEY, serializeRetryIntent(foreignIntent));
+    const subject = coordinator({ storage });
+
+    subject.value.restore();
+    expect(subject.onState).toHaveBeenLastCalledWith({ kind: "blocked_by_other_run", intent: foreignIntent });
+    await subject.value.execute();
+    expect(subject.retryRun).not.toHaveBeenCalled();
+    expect(restoreRetryIntent(storage)).toEqual(foreignIntent);
+
+    subject.value.discard();
+    expect(restoreRetryIntent(storage)).toBeNull();
+    expect(subject.onState).toHaveBeenLastCalledWith({ kind: "idle" });
+  });
+
+  it("uses a synchronous guard so a double click creates one logical POST", async () => {
+    const pending = deferred<RunAccepted>();
+    const retryRun = vi.fn(() => pending.promise);
+    const subject = coordinator({ retryRun });
+
+    const first = subject.value.execute();
+    const second = subject.value.execute();
+    expect(retryRun).toHaveBeenCalledTimes(1);
+    expect(retryRun).toHaveBeenCalledWith(RUN_ID, RETRY_KEY, expect.any(AbortSignal));
+
+    pending.resolve(accepted());
+    await Promise.all([first, second]);
+    expect(subject.navigate).toHaveBeenCalledOnce();
+    expect(subject.navigate).toHaveBeenCalledWith(`/runs/${ACCEPTED_ID}`);
+    expect(restoreRetryIntent(subject.storage)).toMatchObject({
+      originalRunId: RUN_ID,
+      retryKey: RETRY_KEY,
+      stage: "accepted",
+      acceptedRunId: ACCEPTED_ID,
+    });
+  });
+
+  it("continues a transport failure with the same idempotency key", async () => {
+    const retryRun = vi.fn()
+      .mockRejectedValueOnce(new TypeError("network"))
+      .mockResolvedValueOnce(accepted());
+    const subject = coordinator({ retryRun });
+
+    await subject.value.execute();
+    const uncertain = subject.onState.mock.calls.at(-1)?.[0] as RetryUiState;
+    expect(uncertain).toMatchObject({ kind: "transport_error", intent: { retryKey: RETRY_KEY } });
+    if (uncertain.kind !== "transport_error") throw new Error("Expected transport error state");
+
+    await subject.value.execute(uncertain.intent);
+    expect(retryRun.mock.calls.map((call) => call[1])).toEqual([RETRY_KEY, RETRY_KEY]);
+    expect(subject.navigate).toHaveBeenCalledWith(`/runs/${ACCEPTED_ID}`);
+  });
+
+  it("opens an already accepted retry without issuing another POST", async () => {
+    const intent: RetryIntent = {
+      version: 1,
+      originalRunId: RUN_ID,
+      retryKey: RETRY_KEY,
+      stage: "accepted",
+      acceptedRunId: ACCEPTED_ID,
+    };
+    const storage = memoryStorage();
+    storage.setItem(RETRY_INTENT_KEY, serializeRetryIntent(intent));
+    const subject = coordinator({ storage });
+
+    subject.value.restore();
+    expect(subject.onState).toHaveBeenLastCalledWith({ kind: "recovered", intent });
+    await subject.value.execute(intent);
+    expect(subject.retryRun).not.toHaveBeenCalled();
+    expect(subject.navigate).toHaveBeenCalledWith(`/runs/${ACCEPTED_ID}`);
+  });
+
+  it("revokes retry and refreshes detail when the backend reports RUN_NOT_RETRYABLE", async () => {
+    const retryRun = vi.fn(async () => {
+      throw new ApiError(409, "RUN_NOT_RETRYABLE", "No retry", "corr-revoked");
+    });
+    const subject = coordinator({ retryRun });
+
+    await subject.value.execute();
+    expect(subject.onState).toHaveBeenLastCalledWith(expect.objectContaining({
+      kind: "definitive_error",
+      correlationId: "corr-revoked",
+    }));
+    expect(subject.onRevoked).toHaveBeenCalledOnce();
+    expect(subject.onRefresh).toHaveBeenCalledOnce();
+    expect(restoreRetryIntent(subject.storage)).toBeNull();
   });
 });

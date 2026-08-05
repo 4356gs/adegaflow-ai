@@ -583,6 +583,52 @@ Estos criterios aportan evidencia específica para S3-AT-006 a S3-AT-008,
 S3-AT-011, S3-AT-013 a S3-AT-015, S3-AT-017, S3-AT-018 y S3-AT-022. No
 cierran Sprint 3 ni sustituyen el resultado comercial o el E2E del Bloque 5.
 
+## Matriz de evidencia de cierre
+
+La evidencia automatizada se ejecuta con `make check-web`. Los nombres entre
+comillas corresponden a casos o grupos de pruebas versionados en esta misma PR.
+
+| Criterio | Evidencia |
+|---|---|
+| B3-AC-01 | `tests/components.test.tsx`, ruta inválida sin API |
+| B3-AC-02 | `tests/run-observability.test.ts`, “hydrates detail first” |
+| B3-AC-03 | `tests/run-workspace.test.tsx`, estados y metadatos de soporte |
+| B3-AC-04 | `tests/run-workspace.test.tsx`, matriz de cinco estados textuales |
+| B3-AC-05 | `tests/run-workspace.test.tsx`, retry ausente en `needs_review`; inspección visual 1440/360 px |
+| B3-AC-06 | `tests/run-observability.test.ts`, hidratación desde cursor cero y `EVENT_PAGE_SIZE` |
+| B3-AC-07 | `tests/run-observability.test.ts`, reanudación con último cursor confirmado |
+| B3-AC-08 | `tests/run-observability.test.ts`, acumulación, replay idéntico, conflicto y hueco |
+| B3-AC-09 | `tests/run-observability.test.ts`, drenaje secuencial de 101 eventos |
+| B3-AC-10 | `tests/run-observability.test.ts`, códigos de error de contrato y estado estable recuperable |
+| B3-AC-11 | `tests/run-observability.test.ts`, agrupación exclusivamente consecutiva |
+| B3-AC-12 | `tests/run-observability.test.ts`, doce pasos y fallback desconocido |
+| B3-AC-13 | `tests/run-workspace.test.tsx`, tool pública y payload no renderizado |
+| B3-AC-14 | `tests/run-workspace.test.tsx`, acción interna diferenciada |
+| B3-AC-15 | `tests/run-workspace.test.tsx`, evento desconocido visible y seguro |
+| B3-AC-16 | `tests/run-observability.test.ts`, coordinador real: espera 1.5 s y cero solapamiento |
+| B3-AC-17 | `tests/run-observability.test.ts`, coordinador real: pausa, visibilidad y mismo cursor |
+| B3-AC-18 | `tests/run-observability.test.ts`, coordinador real: terminal drenado sin timers posteriores |
+| B3-AC-19 | `tests/run-observability.test.ts`, coordinador real: aborto y eliminación del timer |
+| B3-AC-20 | `tests/run-observability.test.ts`, coordinador real: error y recuperación manual desde el cursor estable |
+| B3-AC-21 | `tests/run-workspace.test.tsx`, error público y correlation ID sin internals |
+| B3-AC-22 | `tests/run-workspace.test.tsx`, matriz `failed && retryable` |
+| B3-AC-23 | `tests/run-workspace.test.tsx`, coordinador real: UUID estable y registro persistido |
+| B3-AC-24 | `tests/run-workspace.test.tsx`, coordinador real: guardia síncrona contra doble clic |
+| B3-AC-25 | `tests/run-workspace.test.tsx`, coordinador real: continuación explícita con la misma clave |
+| B3-AC-26 | `tests/run-workspace.test.tsx`, conflicto definitivo y `RUN_NOT_RETRYABLE` con refresh |
+| B3-AC-27 | `tests/run-workspace.test.tsx`, `navigate` con replace al aceptado y enlace al original |
+| B3-AC-28 | `tests/run-workspace.test.tsx` y revisión de alcance: sin `getResult` ni campos comerciales |
+| B3-AC-29 | Prueba de foco de error; revisión manual real a 1440 px y 360 px, teclado y sin overflow |
+| B3-AC-30 | `tests/client.test.ts`, `tests/proxy.test.ts` y revisión del cliente same-origin |
+| B3-AC-31 | `make check-web`: 43 pruebas del baseline y 57 del Bloque 3 |
+| B3-AC-32 | `git diff --check` y revisión de paths: frontend/documentación, sin dependencias ni backend |
+
+El coordinador de polling probado es el mismo que instancia `RunWorkspace`; los
+efectos de React se limitan a conectarlo con visibilidad, estado y cleanup. El
+coordinador de retry probado es igualmente el usado por la UI y cubre la
+exclusión mutua global: una intención perteneciente a otro run bloquea nuevas
+mutaciones hasta volver al run propietario o descartarla explícitamente.
+
 ## Riesgos y mitigaciones
 
 | Riesgo | Nivel | Mitigación |
