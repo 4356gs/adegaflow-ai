@@ -76,7 +76,7 @@ export const api = {
   getRun: (id: UUID, signal?: AbortSignal) => apiRequest<AgentRunDetail>(`/api/v1/agent-runs/${id}`, { signal }),
   getEvents: (id: UUID, afterSequence = 0, limit = 100, signal?: AbortSignal) => apiRequest<EventList>(`/api/v1/agent-runs/${id}/events`, { query: { after_sequence: afterSequence, limit }, signal }),
   retryRun: (id: UUID, key: string, signal?: AbortSignal) => apiRequest<RunAccepted>(`/api/v1/agent-runs/${id}/retry`, { method: "POST", idempotencyKey: key, signal }),
-  getResult: (id: UUID) => apiRequest<RunResult>(`/api/v1/agent-runs/${id}/result`),
+  getResult: (id: UUID, signal?: AbortSignal) => apiRequest<RunResult>(`/api/v1/agent-runs/${id}/result`, { signal }),
   getOpportunity: (id: UUID) => apiRequest<OpportunityDetail>(`/api/v1/opportunities/${id}`),
   getMemory: (customerId: UUID, limit = 20, offset = 0) => apiRequest<MemoryList>(`/api/v1/customers/${customerId}/memory`, { query: { limit, offset } }),
 };
