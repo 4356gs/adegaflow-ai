@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { RunTimeline } from "@/components/run-timeline";
+import { CommercialResult, type CommercialUiState } from "@/components/commercial-result";
 import { ApiError, api } from "@/lib/api/client";
-import type { AgentRunDetail, PublicEvent, UUID } from "@/lib/api/types";
+import type { AgentRunDetail, AgentRunStatus, PublicEvent, RunResult, UUID } from "@/lib/api/types";
+import { adaptRunResult, type CommercialResultVm } from "@/lib/commercial-result";
 import {
   RETRY_INTENT_KEY,
   EventContractError,
@@ -45,6 +47,31 @@ export type RetryUiState =
   | { kind: "submitting"; intent: RetryIntent }
   | { kind: "transport_error"; intent: RetryIntent; message: string; correlationId: string | null }
   | { kind: "definitive_error"; intent: RetryIntent; message: string; correlationId: string | null };
+
+export type ResultCoordinator = { start(): Promise<void>; retry(): Promise<void>; stop(): void };
+export function createResultCoordinator({ runId, status, getResult, onState, createAbortController = () => new AbortController() }: {
+  runId: UUID; status: AgentRunStatus; getResult: (id: UUID, signal?: AbortSignal) => Promise<RunResult>;
+  onState: (state: CommercialUiState) => void; createAbortController?: () => AbortController;
+}): ResultCoordinator {
+  let controller: AbortController | null = null;
+  let disposed = false;
+  let inFlight = false;
+  let snapshot: CommercialResultVm | null = null;
+  const read = async () => {
+    if (disposed || inFlight || !["completed", "needs_review", "failed"].includes(status)) return;
+    inFlight = true;
+    controller = createAbortController();
+    onState(snapshot ? { kind: "ready", snapshot } : { kind: "loading" });
+    try {
+      const payload = await getResult(runId, controller.signal);
+      snapshot = adaptRunResult(payload, runId, status);
+      if (!disposed) onState({ kind: "ready", snapshot });
+    } catch (error) {
+      if (!isAbortError(error) && !disposed) onState({ kind: "unavailable", message: error instanceof ApiError ? error.message : "La respuesta no cumple el contrato esperado.", snapshot });
+    } finally { inFlight = false; controller = null; }
+  };
+  return { start: read, retry: read, stop() { disposed = true; controller?.abort(); controller = null; } };
+}
 
 function requestIssue(error: unknown): ReadIssue {
   if (error instanceof EventContractError) {
@@ -194,9 +221,11 @@ export function RunWorkspace({ runId }: { runId: UUID }) {
   const [initialIssue, setInitialIssue] = useState<ReadIssue | null>(null);
   const [retryState, setRetryState] = useState<RetryUiState>({ kind: "idle" });
   const [retryRevoked, setRetryRevoked] = useState(false);
+  const [resultRecord, setResultRecord] = useState<{ runId: UUID; state: CommercialUiState } | null>(null);
   const synchronizeRef = useRef<() => void>(() => undefined);
   const retryCoordinatorRef = useRef<RunRetryCoordinator | null>(null);
   const retryErrorRef = useRef<HTMLDivElement>(null);
+  const resultCoordinatorRef = useRef<ResultCoordinator | null>(null);
 
   useEffect(() => {
     const coordinator = createRunRetryCoordinator({
@@ -259,6 +288,15 @@ export function RunWorkspace({ runId }: { runId: UUID }) {
     };
   }, [runId]);
 
+  const detailStatus = snapshot?.detail.status;
+  useEffect(() => {
+    if (!detailStatus || !["completed", "needs_review", "failed"].includes(detailStatus)) return;
+    const coordinator = createResultCoordinator({ runId, status: detailStatus, getResult: api.getResult, onState: (state) => setResultRecord({ runId, state }) });
+    resultCoordinatorRef.current = coordinator;
+    void coordinator.start();
+    return () => { coordinator.stop(); if (resultCoordinatorRef.current === coordinator) resultCoordinatorRef.current = null; };
+  }, [detailStatus, runId]);
+
   useEffect(() => {
     if (retryState.kind !== "transport_error" && retryState.kind !== "definitive_error") return;
     const frame = requestAnimationFrame(() => retryErrorRef.current?.focus());
@@ -276,6 +314,8 @@ export function RunWorkspace({ runId }: { runId: UUID }) {
       onReadRetry={() => synchronizeRef.current()}
       onRetry={(intent) => void retryCoordinatorRef.current?.execute(intent)}
       onDiscardRetry={() => retryCoordinatorRef.current?.discard()}
+      resultState={resultRecord?.runId === runId ? resultRecord.state : { kind: "waiting" }}
+      onResultRetry={() => void resultCoordinatorRef.current?.retry()}
     />
   );
 }
@@ -290,6 +330,8 @@ export function RunWorkspaceView({
   onReadRetry,
   onRetry,
   onDiscardRetry,
+  resultState = { kind: "waiting" },
+  onResultRetry = () => undefined,
 }: {
   runId: UUID;
   snapshot: WorkspaceSnapshot | null;
@@ -300,6 +342,8 @@ export function RunWorkspaceView({
   onReadRetry: () => void;
   onRetry: (intent?: RetryIntent) => void;
   onDiscardRetry: () => void;
+  resultState?: CommercialUiState;
+  onResultRetry?: () => void;
 }) {
   if (!snapshot) {
     if (initialIssue?.kind === "not_found") {
@@ -413,6 +457,7 @@ export function RunWorkspaceView({
 
       <div className="sr-only" aria-live="polite" role="status">{syncing ? "Actualizando ejecución" : `Estado: ${runStatusLabel(detail.status)}`}</div>
       <RunTimeline events={events} />
+      <CommercialResult state={resultState} onRetry={onResultRetry}/>
     </div>
   );
 }

@@ -61,6 +61,15 @@ describe("typed API client", () => {
     await expect(api.getResult("run-1")).rejects.toMatchObject({ status: 409, code: "RUN_NOT_TERMINAL", correlationId: "corr-1" });
   });
 
+  it("keeps result reads same-origin and forwards cancellation", async () => {
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return Response.json({ agent_run_id: "run-1" }); });
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", fetchMock);
+    await api.getResult("run-1", controller.signal);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/agent-runs/run-1/result");
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+  });
+
   it("rejects successful non-JSON responses", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("ok", { status: 200, headers: { "content-type": "text/plain" } })));
     await expect(apiRequest("/api/health")).rejects.toMatchObject({ code: "UNEXPECTED_CONTENT" });
