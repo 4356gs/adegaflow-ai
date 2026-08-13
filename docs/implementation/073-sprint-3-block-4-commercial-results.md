@@ -158,10 +158,15 @@ directamente a FastAPI. Usa el método tipado y la ruta same-origin fija.
 
 ### Brecha contractual identificada
 
-El backend expone `analysis`, `recommendation` y `ArtifactPublic.content` como
-`dict[str, object]`. El cliente TypeScript los representa correctamente como
-`JsonObject`, pero por ello no puede acceder de forma segura a sus campos solo
-con tipado estático.
+El backend expone `analysis`, `recommendation`, `QuotePublic.assumptions` y
+`ArtifactPublic.content` como `dict[str, object]`. El cliente TypeScript
+representa estas cuatro zonas como `JsonObject`, por lo que no puede acceder de
+forma segura a sus campos solo con tipado estático.
+
+Además, `apiRequest<T>` devuelve el payload mediante un cast TypeScript sin
+validación runtime. El adapter superior debe validar el envelope de
+`RunResult`, incluidos `agent_run_id`, `status`, `inquiry`, colecciones y
+entidades tipadas, antes de ejecutar los guards versionados de cada sección.
 
 Esta brecha no exige modificar el backend para UC-001. La futura implementación
 debe resolverla en frontend mediante guards versionados que:
@@ -343,8 +348,12 @@ scroll horizontal etiquetado; no reducen texto hasta hacerlo ilegible.
 - el contenido se etiqueta “Borrador de correo — no enviado”;
 - no se crea enlace `mailto:` ni botón de envío.
 
-### Oportunidad, seguimiento y memoria demo
+### Cliente, oportunidad, seguimiento y memoria demo
 
+- el cliente muestra `company_name`, `country_code` y `preferred_language`
+  únicamente cuando llegan en `customer`;
+- `customer=null` se presenta como “No se vinculó un cliente a esta ejecución”;
+- la UI no reconstruye el cliente desde análisis, oportunidad, correo o memoria;
 - oportunidad y seguimiento se presentan como registros internos simulados;
 - no se afirma sincronización con CRM o calendario externos;
 - stage, priority, score, mercado, volumen, fecha objetivo y resumen se muestran
@@ -521,7 +530,7 @@ No se ofrece copiar el mensaje original, IDs, memoria ni registros demo en P0.
 | B4-AC-24 | Copiar propuesta produce solo texto visible y comienza con el aviso obligatorio. |
 | B4-AC-25 | Copiar asunto y correo son acciones separadas; el correo no incluye el asunto. |
 | B4-AC-26 | Éxito y fallo de clipboard son accesibles y no alteran el contenido. |
-| B4-AC-27 | Oportunidad y seguimiento se identifican como registros demo, no integraciones. |
+| B4-AC-27 | Cliente, oportunidad y seguimiento se identifican como registros demo, usan fallbacks explícitos y no prometen integraciones. |
 | B4-AC-28 | Memoria distingue consulta actual, interacción anterior y procedencia no disponible usando `source_inquiry_id`. |
 | B4-AC-29 | Cada sección ausente o incompatible falla de forma aislada. |
 | B4-AC-30 | `needs_review` se presenta como resultado útil pendiente de revisión, no como fallo. |
@@ -533,6 +542,7 @@ No se ofrece copiar el mensaje original, IDs, memoria ni registros demo en P0.
 | B4-AC-36 | Todas las llamadas del navegador permanecen bajo el proxy same-origin. |
 | B4-AC-37 | Tipos estrictos, lint, tests y build frontend permanecen aprobados. |
 | B4-AC-38 | El diff de implementación no modifica backend, dependencias ni contratos HTTP. |
+| B4-AC-39 | Warnings globales y locales permanecen visibles, conservan su significado y no cambian por sí solos el estado del run. |
 
 ## Matriz criterio → prueba o evidencia
 
@@ -564,7 +574,7 @@ No se ofrece copiar el mensaje original, IDs, memoria ni registros demo en P0.
 | B4-AC-24 | Unitario del compositor de clipboard de propuesta |
 | B4-AC-25 | Unitarios de compositores de asunto y cuerpo |
 | B4-AC-26 | Integración con clipboard resuelto y rechazado más revisión teclado |
-| B4-AC-27 | Componente y revisión de promesas visuales |
+| B4-AC-27 | Componente con cliente presente/nulo, oportunidad y seguimiento; revisión de promesas visuales |
 | B4-AC-28 | Componente con los tres valores de `source_inquiry_id` |
 | B4-AC-29 | Matriz de fixtures parciales por sección |
 | B4-AC-30 | Componente y evidencia visual de `needs_review` |
@@ -576,6 +586,7 @@ No se ofrece copiar el mensaje original, IDs, memoria ni registros demo en P0.
 | B4-AC-36 | Tests de cliente/proxy e inspección de requests del navegador |
 | B4-AC-37 | `make check-web` |
 | B4-AC-38 | `git diff --check` y revisión de paths del PR |
+| B4-AC-39 | Componente con warnings globales/locales, listas vacías y estado del run inalterado |
 
 ## Estrategia de pruebas de implementación
 
@@ -728,4 +739,4 @@ recomendación, y se solicitará aprobación antes de tocar `apps/api`.
 - duplicar error, retry, timeline o tools del Bloque 3;
 - agregar botón de enviar, aprobar, editar, regenerar, PDF o sincronizar;
 - aprobar visualmente sin tests de contrato parcial y payload hostil;
-- declarar Bloque 4 cerrado sin evidencia B4-AC-01 a B4-AC-38.
+- declarar Bloque 4 cerrado sin evidencia B4-AC-01 a B4-AC-39.
